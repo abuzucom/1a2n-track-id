@@ -6,6 +6,7 @@ import { DECK_IDS, TrackerStore } from './state/store.js';
 import { HistoryFile } from './state/history-file.js';
 import { CoverArtResolver } from './covers/resolver.js';
 import { parseCliFlags } from './cli.js';
+import { formatListenError } from './server/listen-error.js';
 
 const PORT = Number(process.env.TRACK_ID_PORT ?? 8080);
 const HOST = '127.0.0.1';
@@ -70,7 +71,14 @@ async function shutdown(code: number): Promise<void> {
 process.on('SIGINT', () => void shutdown(0));
 process.on('SIGTERM', () => void shutdown(0));
 
-await app.listen({ port: PORT, host: HOST });
+try {
+  await app.listen({ port: PORT, host: HOST });
+} catch (err) {
+  const friendly = formatListenError(err, PORT);
+  if (friendly === null) throw err;
+  console.error(friendly);
+  await shutdown(1);
+}
 console.log(`1a2n-track-id running:`);
 console.log(`  overlay:  http://${HOST}:${PORT}/overlay  (add as OBS browser source)`);
 console.log(`  views:    /overlay?view=now | decks | history | all`);

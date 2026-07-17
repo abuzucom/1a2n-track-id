@@ -42,6 +42,22 @@ function asBody(v: unknown): Record<string, unknown> | null {
 export function buildApp({ store, resolver }: AppOptions): App {
   const app = Fastify({ logger: false });
 
+  // The simulator tags its payloads. Real (untagged) Traktor data purges any
+  // simulated state first, so demo tracks can never linger into a live set.
+  let hasSimulatedData = false;
+  app.addHook('preHandler', (req, _reply, done) => {
+    if (req.method === 'POST') {
+      if (req.headers['x-simulated'] === '1') {
+        hasSimulatedData = true;
+      } else if (hasSimulatedData) {
+        hasSimulatedData = false;
+        console.log('real deck data arrived; clearing simulated state.');
+        store.reset();
+      }
+    }
+    done();
+  });
+
   app.post<{ Params: { deck: string } }>('/deckLoaded/:deck', async (req, reply) => {
     const body = asBody(req.body);
     if (!isDeckId(req.params.deck) || !body) return reply.code(400).send({ error: 'bad request' });

@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.2.1] - 2026-07-17
+
+### Fixed
+
+- Simulator payloads are tagged; the server purges all simulated decks, history, and master clock the moment real Traktor data arrives, so demo tracks cannot linger into a live session.
+- Starting while port 8080 is taken now prints a clear message and exits instead of crashing with a stack dump.
+
 ## [0.2.0] - 2026-07-17
 
 ### Added
