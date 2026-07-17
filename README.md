@@ -53,7 +53,7 @@ The server binds to `127.0.0.1` only. WebSocket connections from non-local web o
 
 ## How it decides what's "on air"
 
-A deck is on air when it's playing **and** its mixer channel is audible (volume up, crossfader not fully away). A track is added to the history only after ~10 s continuously on air, so quick cuts and previews don't spam the list. When several decks are on air at once, each gets a now-playing row; the master-clock deck carries the ON AIR badge and the rest show MIXING. A playing deck pulses gently when under 60 seconds remain.
+A deck is on air when it's playing **and** its mixer channel is audible (volume up, crossfader not fully away). A track is added to the history only after ~10 s continuously on air, so quick cuts and previews don't spam the list. The now-playing area is a fixed 2x2 grid matching the deck layout; each slot holds its space and fades in when its deck is on air. The master-clock deck carries the ON AIR badge and other live decks show MIXING. A playing deck pulses gently when under 60 seconds remain.
 
 History starts empty on every launch and is written to `history/session-<date>.json` as tracks play; start with `--resume` to reload today's file (e.g. after a mid-set restart).
 

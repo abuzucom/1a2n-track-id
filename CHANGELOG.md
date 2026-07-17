@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.2.2] - 2026-07-17
+
+### Changed
+
+- Now-playing is a fixed 2x2 grid mirroring the deck layout (A B over C D). Slots keep their space when a deck is off air; content fades in place. The master deck shows ON AIR, other live decks show MIXING.
+
 ## [0.2.1] - 2026-07-17
 
 ### Fixed
