@@ -1,0 +1,7 @@
+node_modules/
+dist/
+public/overlay.js
+public/fonts/
+.cache/
+history/
+*.log

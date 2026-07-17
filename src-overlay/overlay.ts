@@ -1,0 +1,160 @@
+// OBS browser-source overlay client. Renders deck/track state pushed over WebSocket.
+// All track metadata is untrusted: only ever assigned via textContent, never innerHTML.
+
+interface Track {
+  title: string;
+  artist: string;
+  bpm: number | null;
+  tempo: number | null;
+  resultingKey: string;
+  artUrl?: string;
+}
+
+interface Deck {
+  track: Track | null;
+  isPlaying: boolean;
+  onAir: boolean;
+}
+
+interface HistoryEntry {
+  title: string;
+  artist: string;
+}
+
+interface Snapshot {
+  decks: Record<'A' | 'B' | 'C' | 'D', Deck>;
+  history: HistoryEntry[];
+}
+
+const DECKS = ['A', 'B', 'C', 'D'] as const;
+const root = document.getElementById('overlay-root') as HTMLDivElement;
+
+const view = new URLSearchParams(location.search).get('view') ?? 'all';
+document.body.dataset.view = ['now', 'decks', 'history', 'all'].includes(view) ? view : 'all';
+
+function el<K extends keyof HTMLElementTagNameMap>(
+  tag: K,
+  className: string,
+  parent: HTMLElement,
+): HTMLElementTagNameMap[K] {
+  const node = document.createElement(tag);
+  node.className = className;
+  parent.appendChild(node);
+  return node;
+}
+
+// --- static skeleton -------------------------------------------------------
+const hero = el('div', 'hero', root);
+const heroArt = el('img', 'art', hero);
+heroArt.alt = '';
+const heroMeta = el('div', 'meta', hero);
+const heroTitle = el('div', 'title', heroMeta);
+const heroArtist = el('div', 'artist', heroMeta);
+const heroBadge = el('div', 'badge', hero);
+heroBadge.textContent = 'ON AIR';
+
+const deckGrid = el('div', 'decks', root);
+const deckEls = DECKS.map((letter) => {
+  const card = el('div', 'deck', deckGrid);
+  const head = el('div', 'head', card);
+  const letterEl = el('div', 'letter', head);
+  letterEl.textContent = letter;
+  const stats = el('div', 'stats', head);
+  const body = el('div', 'body', card);
+  return { card, stats, body };
+});
+
+const historyBox = el('div', 'history', root);
+el('h2', '', historyBox).textContent = 'Track History';
+const historyList = el('ol', '', historyBox);
+
+// --- rendering --------------------------------------------------------------
+let lastHeroKey = '';
+let lastHistoryLen = -1;
+
+function bpmText(track: Track): string {
+  const bpm = track.tempo ?? track.bpm;
+  const parts: string[] = [];
+  if (bpm !== null) parts.push(`${bpm.toFixed(1)} BPM`);
+  if (track.resultingKey) parts.push(track.resultingKey);
+  return parts.join(' | ');
+}
+
+function render(snap: Snapshot): void {
+  // deck cards
+  DECKS.forEach((letter, i) => {
+    const deck = snap.decks[letter];
+    const ui = deckEls[i];
+    if (!ui) return;
+    ui.card.classList.toggle('onair', deck.onAir);
+    ui.card.classList.toggle('playing', deck.isPlaying);
+    ui.body.replaceChildren();
+    if (deck.track) {
+      ui.stats.textContent = bpmText(deck.track);
+      if (deck.track.artUrl) {
+        const art = el('img', 'art', ui.body);
+        art.alt = '';
+        art.src = deck.track.artUrl;
+      }
+      el('div', 'title', ui.body).textContent = deck.track.title || 'Unknown title';
+      el('div', 'artist', ui.body).textContent = deck.track.artist || 'Unknown artist';
+    } else {
+      ui.stats.textContent = '';
+      el('div', 'empty', ui.body).textContent = 'no track loaded';
+    }
+  });
+
+  // hero: the on-air playing deck (master-ish: first on-air deck)
+  const onAirDeck = DECKS.map((l) => snap.decks[l]).find((d) => d.onAir && d.track);
+  if (onAirDeck?.track) {
+    const key = `${onAirDeck.track.artist}\u0000${onAirDeck.track.title}`;
+    if (key !== lastHeroKey) {
+      lastHeroKey = key;
+      heroTitle.textContent = onAirDeck.track.title || 'Unknown title';
+      heroArtist.textContent = onAirDeck.track.artist || 'Unknown artist';
+      if (onAirDeck.track.artUrl) {
+        heroArt.src = onAirDeck.track.artUrl;
+        heroArt.style.display = '';
+      } else {
+        heroArt.removeAttribute('src');
+        heroArt.style.display = 'none';
+      }
+      // Restart the enter transition without rAF (rAF is throttled/suspended
+      // in backgrounded OBS browser sources).
+      hero.classList.remove('visible');
+      void hero.offsetWidth;
+    }
+    hero.classList.add('visible');
+  } else {
+    hero.classList.remove('visible');
+    lastHeroKey = '';
+  }
+
+  // history (most recent last in DOM; column-reverse shows it on top)
+  if (snap.history.length !== lastHistoryLen) {
+    lastHistoryLen = snap.history.length;
+    historyList.replaceChildren();
+    for (const entry of snap.history.slice(-10)) {
+      const li = document.createElement('li');
+      const artist = document.createElement('span');
+      artist.className = 'h-artist';
+      artist.textContent = entry.artist ? `${entry.artist} - ` : '';
+      li.appendChild(artist);
+      li.appendChild(document.createTextNode(entry.title || 'Unknown title'));
+      historyList.appendChild(li);
+    }
+    historyBox.style.display = snap.history.length ? '' : 'none';
+  }
+}
+
+// --- websocket with reconnect ------------------------------------------------
+function connect(): void {
+  const ws = new WebSocket(`ws://${location.host}/ws`);
+  ws.onmessage = (ev) => {
+    const msg = JSON.parse(String(ev.data)) as { type: string; state: Snapshot };
+    if (msg.type === 'state') render(msg.state);
+  };
+  ws.onclose = () => setTimeout(connect, 2000);
+  ws.onerror = () => ws.close();
+}
+connect();
