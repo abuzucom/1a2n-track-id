@@ -18,6 +18,7 @@ export interface TrackInfo {
   resultingKey: string;
   keyText: string;
   trackLength: number | null;
+  artUrl?: string;
 }
 
 export interface DeckState {
@@ -135,6 +136,13 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     if (!deck) throw new RangeError(`invalid channel index: ${index}`);
     if ('isOnAir' in payload) this.channelOnAir[deck] = bool(payload.isOnAir);
     this.recomputeOnAir(deck);
+    this.emitChange();
+  }
+
+  setDeckArt(deck: DeckId, artUrl: string): void {
+    const d = this.deck(deck);
+    if (!d.track || d.track.artUrl === artUrl) return;
+    d.track.artUrl = artUrl;
     this.emitChange();
   }
 

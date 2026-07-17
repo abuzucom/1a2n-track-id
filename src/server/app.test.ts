@@ -1,14 +1,18 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { buildApp, type App } from './app.js';
 import { TrackerStore } from '../state/store.js';
+import { CoverArtResolver } from '../covers/resolver.js';
 
 describe('ingest routes', () => {
   let store: TrackerStore;
   let app: App;
 
+  let resolver: CoverArtResolver;
+
   beforeEach(async () => {
     store = new TrackerStore({ historyDebounceMs: 0 });
-    app = buildApp({ store });
+    resolver = new CoverArtResolver();
+    app = buildApp({ store, resolver });
     await app.ready();
   });
   afterEach(async () => {
@@ -65,6 +69,29 @@ describe('ingest routes', () => {
     const js = await app.inject({ method: 'GET', url: '/overlay.js' });
     expect(js.statusCode).toBe(200);
     expect(js.headers['content-type']).toContain('javascript');
+  });
+
+  it('serves cover art by id and 404s unknown/malformed ids', async () => {
+    const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { mp3WithCover } = await import('../covers/test-fixtures.js');
+
+    const dir = await mkdtemp(join(tmpdir(), 'artroute-'));
+    try {
+      const file = join(dir, 'track.mp3');
+      await writeFile(file, mp3WithCover());
+      await resolver.resolve(file);
+
+      const ok = await app.inject({ method: 'GET', url: `/art/${resolver.idFor(file)}` });
+      expect(ok.statusCode).toBe(200);
+      expect(ok.headers['content-type']).toBe('image/png');
+
+      expect((await app.inject({ method: 'GET', url: '/art/nothex!!' })).statusCode).toBe(404);
+      expect((await app.inject({ method: 'GET', url: '/art/deadbeefdeadbeef' })).statusCode).toBe(404);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
   });
 
   it('rejects non-object bodies', async () => {

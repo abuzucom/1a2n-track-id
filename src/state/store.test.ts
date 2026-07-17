@@ -123,6 +123,15 @@ describe('TrackerStore', () => {
     expect(seen.at(-1)).toBe('Evented');
   });
 
+  it('sets deck art url without clobbering on reload', () => {
+    load(store, 'A', 'Arty');
+    store.setDeckArt('A', '/art/abc123');
+    expect(store.snapshot().decks.A.track?.artUrl).toBe('/art/abc123');
+
+    load(store, 'A', 'NextTrack'); // reload clears artUrl
+    expect(store.snapshot().decks.A.track?.artUrl).toBeUndefined();
+  });
+
   it('tracks master clock', () => {
     store.updateMasterClock({ deck: 'B', bpm: 140.2 });
     expect(store.snapshot().masterClock).toEqual({ deck: 'B', bpm: 140.2 });

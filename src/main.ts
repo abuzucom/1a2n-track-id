@@ -2,8 +2,9 @@ import { join } from 'node:path';
 import { buildApp } from './server/app.js';
 import { attachWebSocket } from './server/ws.js';
 import { AutoShutdown } from './server/auto-shutdown.js';
-import { TrackerStore } from './state/store.js';
+import { DECK_IDS, TrackerStore } from './state/store.js';
 import { HistoryFile } from './state/history-file.js';
+import { CoverArtResolver } from './covers/resolver.js';
 
 const PORT = Number(process.env.TRACK_ID_PORT ?? 8080);
 const HOST = '127.0.0.1';
@@ -25,7 +26,23 @@ store.on('change', (snap) => {
   }
 });
 
-const app = buildApp({ store });
+const resolver = new CoverArtResolver();
+store.on('change', (snap) => {
+  for (const deckId of DECK_IDS) {
+    const track = snap.decks[deckId].track;
+    if (!track || !track.filePath || track.artUrl !== undefined) continue;
+    const filePath = track.filePath;
+    void resolver.resolve(filePath).then((art) => {
+      // Deck may have been reloaded while we parsed the file.
+      const current = store.snapshot().decks[deckId].track;
+      if (art && current?.filePath === filePath) {
+        store.setDeckArt(deckId, `/art/${resolver.idFor(filePath)}`);
+      }
+    });
+  }
+});
+
+const app = buildApp({ store, resolver });
 const hub = attachWebSocket(app.server, store);
 
 const auto = new AutoShutdown({

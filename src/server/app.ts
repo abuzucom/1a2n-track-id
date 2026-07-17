@@ -3,6 +3,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { DECK_IDS, type DeckId, type TrackerStore } from '../state/store.js';
+import type { CoverArtResolver } from '../covers/resolver.js';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
 
@@ -16,6 +17,7 @@ export type App = FastifyInstance;
 
 export interface AppOptions {
   store: TrackerStore;
+  resolver?: CoverArtResolver;
 }
 
 function isDeckId(v: string): v is DeckId {
@@ -26,7 +28,7 @@ function asBody(v: unknown): Record<string, unknown> | null {
   return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 }
 
-export function buildApp({ store }: AppOptions): App {
+export function buildApp({ store, resolver }: AppOptions): App {
   const app = Fastify({ logger: false });
 
   app.post<{ Params: { deck: string } }>('/deckLoaded/:deck', async (req, reply) => {
@@ -61,6 +63,13 @@ export function buildApp({ store }: AppOptions): App {
   });
 
   app.get('/state', async () => store.snapshot());
+
+  app.get<{ Params: { id: string } }>('/art/:id', async (req, reply) => {
+    const { id } = req.params;
+    const art = resolver && /^[0-9a-f]{16}$/.test(id) ? resolver.get(id) : null;
+    if (!art) return reply.code(404).send({ error: 'not found' });
+    return reply.type(art.mime).send(art.data);
+  });
 
   for (const [route, { file, type }] of Object.entries(STATIC_FILES)) {
     app.get(route, async (_req, reply) => {
