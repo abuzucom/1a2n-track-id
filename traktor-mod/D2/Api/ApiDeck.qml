@@ -14,7 +14,7 @@ Item {
   readonly property var       hotcueTypes:  ["cue", "fadeIn", "fadeOut", "load", "grid", "loop"]
   readonly property string    pathPrefix:   "app.traktor.decks." + (deckId+1) + "."
 
-  AppProperty { path: pathPrefix + "is_loaded";         onValueChanged: deckLoadedTimer.start() }
+  AppProperty { id: propIsLoaded; path: pathPrefix + "is_loaded"; onValueChanged: deckLoadedTimer.start() }
   AppProperty { path: pathPrefix + "is_loaded_signal";  onValueChanged: deckLoadedTimer.start() }
 
   AppProperty { id: propTitle;         path: pathPrefix + "content.title" }
@@ -86,7 +86,20 @@ Item {
     id: deckLoadedTimer
     interval: 250
 
-    onTriggered: {
+    onTriggered: sendDeckLoaded()
+  }
+  Timer {
+    // Keep-alive: re-send loaded deck state so a server started after the
+    // track was loaded still learns about it. The server treats repeats of
+    // the same track as refreshes.
+    interval: 10000
+    repeat: true
+    running: propIsLoaded.value ? true : false
+
+    onTriggered: sendDeckLoaded()
+  }
+
+  function sendDeckLoaded() {
       var cueIdxs = findCueIdxs()
 
       ApiClient.send("deckLoaded/" + deckLetter, {
@@ -118,8 +131,8 @@ Item {
         isSynced:     propIsSynced.value,
         isKeyLockOn:  propIsKeyLockOn.value,
       })
-    }
   }
+
   Timer {
     id: tempoChangedTimer
     interval: 250

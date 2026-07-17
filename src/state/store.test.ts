@@ -98,22 +98,46 @@ describe('TrackerStore', () => {
     expect(store.snapshot().history).toHaveLength(1);
   });
 
-  it('records history for the same title reloaded later (new play)', () => {
+  it('treats a re-sent identical deckLoaded as a refresh, not a new load', () => {
+    load(store, 'A', 'KeepAlive');
+    const firstLoadId = store.snapshot().decks.A.loadId;
+    store.updateChannel(1, { isOnAir: true });
+    store.updateDeck('A', { isPlaying: true });
+    vi.advanceTimersByTime(5000);
+    expect(store.snapshot().history).toHaveLength(1);
+
+    // QML keep-alive re-sends the same track every 10s.
+    load(store, 'A', 'KeepAlive');
+    expect(store.snapshot().decks.A.loadId).toBe(firstLoadId);
+    vi.advanceTimersByTime(20_000);
+    expect(store.snapshot().history).toHaveLength(1);
+  });
+
+  it('keep-alive refresh does not clobber playing state or art', () => {
+    load(store, 'B', 'Refresh');
+    store.updateDeck('B', { isPlaying: true });
+    store.setDeckArt('B', '/art/abc');
+    load(store, 'B', 'Refresh');
+    const deck = store.snapshot().decks.B;
+    expect(deck.isPlaying).toBe(true);
+    expect(deck.track?.artUrl).toBe('/art/abc');
+  });
+
+  it('records a repeat play when the deck held another track in between', () => {
     load(store, 'A', 'Anthem');
     store.updateChannel(1, { isOnAir: true });
     store.updateDeck('A', { isPlaying: true });
     vi.advanceTimersByTime(5000);
 
-    load(store, 'B', 'Other');
-    store.updateChannel(2, { isOnAir: true });
-    store.updateDeck('B', { isPlaying: true });
-    vi.advanceTimersByTime(5000);
-
-    load(store, 'A', 'Anthem'); // reloaded, played again
+    load(store, 'A', 'Interlude'); // deck A moves on...
     store.updateDeck('A', { isPlaying: true });
     vi.advanceTimersByTime(5000);
 
-    expect(store.snapshot().history.map((h) => h.title)).toEqual(['Anthem', 'Other', 'Anthem']);
+    load(store, 'A', 'Anthem'); // ...then Anthem comes back
+    store.updateDeck('A', { isPlaying: true });
+    vi.advanceTimersByTime(5000);
+
+    expect(store.snapshot().history.map((h) => h.title)).toEqual(['Anthem', 'Interlude', 'Anthem']);
   });
 
   it('emits change events with a snapshot', () => {

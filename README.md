@@ -26,7 +26,7 @@ The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/trakto
 
 ### 2. Start the overlay server
 
-Double-click **`start-overlay.cmd`** (make a desktop shortcut for pre-stream convenience). It installs dependencies on first run, starts the server, and opens the overlay in your browser as a quick check.
+Double-click **`start-overlay.cmd`** (make a desktop shortcut for pre-stream convenience). It installs dependencies on first run, starts the server, and opens the overlay in your browser as a quick check. Start order does not matter: decks already loaded in Traktor appear within about 10 seconds; new loads appear immediately.
 
 The server exits on its own ~60 seconds after the last overlay window/OBS source disconnects (it won't exit before the first one connects). Use `node dist/main.js --no-auto-exit` to disable that.
 

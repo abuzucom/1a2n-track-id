@@ -122,6 +122,17 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
 
   deckLoaded(deck: DeckId, payload: Record<string, unknown>): void {
     const d = this.deck(deck);
+    // The QML mod re-sends loaded decks periodically so a server started
+    // after the track was loaded still converges. An identical track is a
+    // refresh: keep loadId (history dedupe), playing state, and art.
+    const isRefresh =
+      d.track !== null &&
+      d.track.title === str(payload.title) &&
+      d.track.filePath === str(payload.filePath);
+    if (isRefresh) {
+      this.emitChange();
+      return;
+    }
     d.track = {
       title: str(payload.title),
       artist: str(payload.artist),
