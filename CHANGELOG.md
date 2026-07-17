@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.3.0] - 2026-07-17
+
+### Added
+
+- Adopt the abuzucom/agents instruction template: AGENTS.md (canonical, orientation filled for this repo, examples in TypeScript) with synced tool copies, scripts/sync.py, sync-check CI, .claudeignore, .editorconfig, .gitattributes.
+
+### Changed
+
+- .gitattributes normalizes line endings: LF in repository blobs, platform-native in working trees.
+
 ## [0.2.2] - 2026-07-17
 
 ### Changed
