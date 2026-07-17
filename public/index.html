@@ -26,23 +26,46 @@
     --radius: 2px;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { background: transparent; overflow: hidden; }
+  html { background: transparent; }
   body {
     font-family: var(--font-editorial);
     font-weight: 400;
     color: var(--paper);
     padding: 16px;
+    overflow: hidden;
+    background: var(--pitch); /* dark theme default */
   }
+  body[data-theme="paper"] { background: var(--paper); }
+  body[data-theme="grey"] { background: var(--dull-silver); }
+  body[data-theme="transparent"] { background: transparent; }
+  /* Cards stay Pitch in every theme; lift them off non-dark grounds. */
+  body[data-theme="paper"] .card, body[data-theme="grey"] .card { border-color: var(--pitch); }
+
   #overlay-root { display: flex; flex-direction: column; gap: 14px; }
 
-  /* now playing hero */
-  .hero {
-    display: flex; align-items: center; gap: 16px;
+  .card {
     background: var(--card-bg);
     border: 1px solid var(--charcoal);
     border-radius: var(--radius);
+  }
+
+  /* theme toggle */
+  #theme-toggle {
+    position: fixed; top: 10px; right: 10px; z-index: 10;
+    font-family: var(--font-utility); font-weight: 700;
+    font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+    color: var(--concrete); background: var(--card-bg);
+    border: 1px solid var(--charcoal); border-radius: var(--radius);
+    padding: 4px 8px; cursor: pointer;
+    opacity: .25; transition: opacity .2s ease;
+  }
+  #theme-toggle:hover { opacity: 1; }
+
+  /* now playing rows */
+  #heroes { display: flex; flex-direction: column; gap: 8px; max-width: 640px; }
+  .hero {
+    display: flex; align-items: center; gap: 16px;
     padding: 14px 18px;
-    max-width: 640px;
     opacity: 0; transform: translateY(8px);
     transition: opacity .4s ease, transform .4s ease;
   }
@@ -70,23 +93,28 @@
     font-family: var(--font-utility);
     font-weight: 700;
     font-size: 11px; letter-spacing: .14em;
-    color: var(--pitch); background: var(--paper);
     border-radius: var(--radius); padding: 4px 9px;
+  }
+  .hero .badge.onair {
+    color: var(--pitch); background: var(--paper);
     animation: pulse 2s ease-in-out infinite;
+  }
+  .hero .badge.mixing {
+    color: var(--concrete); border: 1px solid var(--concrete);
   }
   @keyframes pulse { 50% { opacity: .55; } }
 
-  /* deck grid */
-  .decks { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px; }
+  /* deck grid: fixed 2x2, A B over C D, at every width */
+  .decks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
   .deck {
-    background: var(--card-bg);
-    border: 1px solid var(--charcoal);
-    border-radius: var(--radius);
     padding: 10px 12px;
     transition: border-color .3s ease, box-shadow .3s ease;
     min-height: 92px;
   }
   .deck.onair { border-color: var(--paper); box-shadow: 0 0 12px rgba(234, 231, 225, .25); }
+  /* Gentle end-of-track pulse: 0.5 Hz, small opacity swing (photosensitivity-safe). */
+  .deck.ending { animation: ending-pulse 2s ease-in-out infinite; }
+  @keyframes ending-pulse { 50% { border-color: var(--concrete); opacity: .75; } }
   .deck .head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
   .deck .letter {
     width: 22px; height: 22px; border-radius: var(--radius);
@@ -112,9 +140,6 @@
 
   /* history */
   .history {
-    background: var(--card-bg);
-    border: 1px solid var(--charcoal);
-    border-radius: var(--radius);
     padding: 12px 16px;
     max-width: 480px;
   }
@@ -131,8 +156,8 @@
   @keyframes slidein { from { opacity: 0; transform: translateX(-10px); } }
 
   body[data-view="now"] .decks, body[data-view="now"] .history { display: none; }
-  body[data-view="decks"] .hero, body[data-view="decks"] .history { display: none; }
-  body[data-view="history"] .hero, body[data-view="history"] .decks { display: none; }
+  body[data-view="decks"] #heroes, body[data-view="decks"] .history { display: none; }
+  body[data-view="history"] #heroes, body[data-view="history"] .decks { display: none; }
 </style>
 </head>
 <body>
