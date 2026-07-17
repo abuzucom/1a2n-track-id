@@ -60,6 +60,24 @@ describe('ingest routes', () => {
     expect((await app.inject({ method: 'POST', url: '/updateChannel/x', payload: {} })).statusCode).toBe(400);
   });
 
+  it('never exposes filePath via /state', async () => {
+    await app.inject({
+      method: 'POST',
+      url: '/deckLoaded/A',
+      payload: { title: 'Secret', filePath: 'C:\\Users\\jonathan\\Music\\secret.mp3' },
+    });
+    const body = (await app.inject({ method: 'GET', url: '/state' })).body;
+    expect(body).toContain('Secret');
+    expect(body).not.toContain('filePath');
+  });
+
+  it('serves the self-hosted brand fonts', async () => {
+    const res = await app.inject({ method: 'GET', url: '/fonts/libre-franklin-900.woff2' });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toBe('font/woff2');
+    expect((await app.inject({ method: 'GET', url: '/fonts/cousine-700.woff2' })).statusCode).toBe(200);
+  });
+
   it('serves the overlay page and bundle', async () => {
     const page = await app.inject({ method: 'GET', url: '/overlay' });
     expect(page.statusCode).toBe(200);

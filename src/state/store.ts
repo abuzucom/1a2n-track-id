@@ -53,6 +53,34 @@ export interface Snapshot {
   masterClock: MasterClock;
 }
 
+export type ClientTrackInfo = Omit<TrackInfo, 'filePath'>;
+export type ClientHistoryEntry = Omit<HistoryEntry, 'filePath'>;
+export interface ClientSnapshot {
+  decks: Record<DeckId, Omit<DeckState, 'track'> & { track: ClientTrackInfo | null }>;
+  history: ClientHistoryEntry[];
+  masterClock: MasterClock;
+}
+
+function withoutFilePath<T extends { filePath: string }>(obj: T): Omit<T, 'filePath'> {
+  const clone: Partial<T> = { ...obj };
+  delete clone.filePath;
+  return clone as Omit<T, 'filePath'>;
+}
+
+/** Strip local file paths before a snapshot leaves the server (username leak). */
+export function toClientSnapshot(snap: Snapshot): ClientSnapshot {
+  const decks = {} as ClientSnapshot['decks'];
+  for (const id of DECK_IDS) {
+    const { track, ...rest } = snap.decks[id];
+    decks[id] = { ...rest, track: track ? withoutFilePath(track) : null };
+  }
+  return {
+    decks,
+    history: snap.history.map(withoutFilePath),
+    masterClock: snap.masterClock,
+  };
+}
+
 interface StoreOptions {
   historyDebounceMs?: number;
   maxHistory?: number;

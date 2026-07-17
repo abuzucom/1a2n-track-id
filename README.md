@@ -45,6 +45,10 @@ Views, if you want separate OBS sources per element:
 | `/overlay?view=decks` | 4-deck grid only |
 | `/overlay?view=history` | track history only |
 
+## Privacy
+
+The server binds to `127.0.0.1` only. WebSocket connections from non-local web origins are rejected, and client-facing state never includes local file paths. Fonts are self-hosted; the overlay makes no external requests.
+
 ## How it decides what's "on air"
 
 A deck is on air when it's playing **and** its mixer channel is audible (volume up, crossfader not fully away). A track is added to the history only after ~10 s continuously on air, so quick cuts and previews don't spam the list. History persists per day in `history/`.

@@ -49,6 +49,31 @@ describe('WebSocket hub', () => {
     ws.close();
   });
 
+  it('rejects connections from non-local web origins', async () => {
+    const ws = new WebSocket(url, { headers: { origin: 'https://evil.example' } });
+    const [err] = await once(ws, 'error');
+    expect(String(err)).toContain('401');
+  });
+
+  it('accepts local origins and clients without an Origin header', async () => {
+    const local = new WebSocket(url, { headers: { origin: 'http://127.0.0.1:8080' } });
+    await once(local, 'open');
+    local.close();
+    const bare = new WebSocket(url);
+    await once(bare, 'open');
+    bare.close();
+  });
+
+  it('never exposes filePath in client snapshots', async () => {
+    store.deckLoaded('A', { title: 'Secret', filePath: 'C:\\Users\\jonathan\\Music\\secret.mp3' });
+    const ws = new WebSocket(url);
+    const raw = JSON.stringify(await nextMessage(ws));
+    expect(raw).toContain('Secret');
+    expect(raw).not.toContain('filePath');
+    expect(raw).not.toContain('jonathan');
+    ws.close();
+  });
+
   it('reports client connect/disconnect counts', async () => {
     const counts: number[] = [];
     hub.on('clients', (n) => counts.push(n));

@@ -2,15 +2,26 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { DECK_IDS, type DeckId, type TrackerStore } from '../state/store.js';
+import { DECK_IDS, toClientSnapshot, type DeckId, type TrackerStore } from '../state/store.js';
 import type { CoverArtResolver } from '../covers/resolver.js';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
+
+const FONT_FILES = [
+  'libre-franklin-400.woff2',
+  'libre-franklin-500.woff2',
+  'libre-franklin-900.woff2',
+  'cousine-400.woff2',
+  'cousine-700.woff2',
+];
 
 // Fixed allowlist of static files; nothing user-supplied ever touches a path.
 const STATIC_FILES: Record<string, { file: string; type: string }> = {
   '/overlay': { file: 'index.html', type: 'text/html; charset=utf-8' },
   '/overlay.js': { file: 'overlay.js', type: 'text/javascript; charset=utf-8' },
+  ...Object.fromEntries(
+    FONT_FILES.map((f) => [`/fonts/${f}`, { file: join('fonts', f), type: 'font/woff2' }]),
+  ),
 };
 
 export type App = FastifyInstance;
@@ -62,7 +73,7 @@ export function buildApp({ store, resolver }: AppOptions): App {
     return { ok: true };
   });
 
-  app.get('/state', async () => store.snapshot());
+  app.get('/state', async () => toClientSnapshot(store.snapshot()));
 
   app.get<{ Params: { id: string } }>('/art/:id', async (req, reply) => {
     const { id } = req.params;

@@ -39,6 +39,29 @@ describe('HistoryFile', () => {
     expect(await hf.load()).toEqual([]);
   });
 
+  it('drops malformed entries and coerces fields on load', async () => {
+    const file = join(dir, 'mixed.json');
+    const { writeFile } = await import('node:fs/promises');
+    await writeFile(
+      file,
+      JSON.stringify([
+        entry('Good'),
+        'not an object',
+        42,
+        null,
+        { title: 123, artist: { nested: true }, bpm: 'NaN?', playedAt: 5 },
+      ]),
+      'utf8',
+    );
+    const loaded = await new HistoryFile(file).load();
+    expect(loaded).toHaveLength(2);
+    expect(loaded[0]?.title).toBe('Good');
+    expect(loaded[1]?.title).toBe('');
+    expect(loaded[1]?.artist).toBe('');
+    expect(loaded[1]?.bpm).toBeNull();
+    expect(loaded[1]?.playedAt).toBe('');
+  });
+
   it('returns empty history for a corrupt file', async () => {
     const file = join(dir, 'bad.json');
     const hf = new HistoryFile(file);

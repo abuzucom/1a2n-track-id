@@ -1,7 +1,23 @@
 import { EventEmitter } from 'node:events';
 import type { Server } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
-import type { Snapshot, TrackerStore } from '../state/store.js';
+import { toClientSnapshot, type Snapshot, type TrackerStore } from '../state/store.js';
+
+const LOCAL_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
+
+/**
+ * WebSockets bypass CORS: any web page could otherwise connect to the local
+ * endpoint and read live snapshots. Allow only local origins, plus clients
+ * that send no Origin header (non-browser tools; browsers always send one).
+ */
+export function isAllowedOrigin(origin: string | undefined): boolean {
+  if (origin === undefined) return true;
+  try {
+    return LOCAL_HOSTNAMES.has(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
+}
 
 export class WsHub extends EventEmitter<{ clients: [number] }> {
   private readonly wss: WebSocketServer;
@@ -9,7 +25,11 @@ export class WsHub extends EventEmitter<{ clients: [number] }> {
 
   constructor(server: Server, private readonly store: TrackerStore) {
     super();
-    this.wss = new WebSocketServer({ server, path: '/ws' });
+    this.wss = new WebSocketServer({
+      server,
+      path: '/ws',
+      verifyClient: ({ origin }: { origin?: string }) => isAllowedOrigin(origin),
+    });
     this.wss.on('connection', (ws) => {
       ws.send(this.message(store.snapshot()));
       this.emit('clients', this.clientCount);
@@ -39,7 +59,7 @@ export class WsHub extends EventEmitter<{ clients: [number] }> {
   }
 
   private message(snap: Snapshot): string {
-    return JSON.stringify({ type: 'state', state: snap });
+    return JSON.stringify({ type: 'state', state: toClientSnapshot(snap) });
   }
 }
 

@@ -12,3 +12,10 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - WebSocket broadcast and OBS browser-source overlay (4 decks, now-playing hero, history, cover art).
 - Cover art extraction from track files with SHA-256-keyed disk cache.
 - `start-overlay.cmd` one-click launcher; auto-shutdown when the last overlay client disconnects.
+- Self-hosted brand fonts (@fontsource); the overlay makes no external requests.
+
+### Security
+
+- WebSocket endpoint rejects non-local web origins (WebSockets bypass CORS).
+- Client-facing snapshots exclude local file paths.
+- History files are validated on load.
