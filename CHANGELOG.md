@@ -10,7 +10,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 ### Changed
 
-- Line endings normalized to LF in the repository via .gitattributes.
+- Line endings enforced as LF in the repository via .gitattributes.
 
 ## [0.2.2] - 2026-07-17
 
