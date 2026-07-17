@@ -1,5 +1,16 @@
+import { readFile } from 'node:fs/promises';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { DECK_IDS, type DeckId, type TrackerStore } from '../state/store.js';
+
+const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
+
+// Fixed allowlist of static files; nothing user-supplied ever touches a path.
+const STATIC_FILES: Record<string, { file: string; type: string }> = {
+  '/overlay': { file: 'index.html', type: 'text/html; charset=utf-8' },
+  '/overlay.js': { file: 'overlay.js', type: 'text/javascript; charset=utf-8' },
+};
 
 export type App = FastifyInstance;
 
@@ -50,6 +61,17 @@ export function buildApp({ store }: AppOptions): App {
   });
 
   app.get('/state', async () => store.snapshot());
+
+  for (const [route, { file, type }] of Object.entries(STATIC_FILES)) {
+    app.get(route, async (_req, reply) => {
+      try {
+        const content = await readFile(join(PUBLIC_DIR, file));
+        return reply.type(type).send(content);
+      } catch {
+        return reply.code(404).send({ error: 'not built' });
+      }
+    });
+  }
 
   return app;
 }

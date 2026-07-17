@@ -56,6 +56,17 @@ describe('ingest routes', () => {
     expect((await app.inject({ method: 'POST', url: '/updateChannel/x', payload: {} })).statusCode).toBe(400);
   });
 
+  it('serves the overlay page and bundle', async () => {
+    const page = await app.inject({ method: 'GET', url: '/overlay' });
+    expect(page.statusCode).toBe(200);
+    expect(page.headers['content-type']).toContain('text/html');
+    expect(page.body).toContain('id="overlay-root"');
+
+    const js = await app.inject({ method: 'GET', url: '/overlay.js' });
+    expect(js.statusCode).toBe(200);
+    expect(js.headers['content-type']).toContain('javascript');
+  });
+
   it('rejects non-object bodies', async () => {
     const res = await app.inject({
       method: 'POST',
