@@ -30,6 +30,11 @@ export class WsHub extends EventEmitter<{ clients: [number] }> {
       path: '/ws',
       verifyClient: ({ origin }: { origin?: string }) => isAllowedOrigin(origin),
     });
+    // Without a handler the wss re-emits http server errors (e.g. EADDRINUSE)
+    // as unhandled 'error' events and crashes the process with a stack dump.
+    this.wss.on('error', (err) => {
+      console.error('websocket server error:', err.message);
+    });
     this.wss.on('connection', (ws) => {
       ws.send(this.message(store.snapshot()));
       this.emit('clients', this.clientCount);

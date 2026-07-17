@@ -60,10 +60,12 @@ History starts empty on every launch and is written to `history/session-<date>.j
 ## Development
 
 ```
-npm run dev        # server with reload (auto-exit disabled)
-npm run simulate   # fake deck data, no Traktor needed
+npm run dev        # dev server on port 8090 with reload (auto-exit disabled)
+npm run simulate   # fake deck data against the dev server, no Traktor needed
 npm test           # vitest
 npm run lint       # eslint
 ```
+
+Development runs on port 8090 (`http://127.0.0.1:8090/overlay`); the production launcher owns 8080. This keeps stale dev servers and simulated data away from the live overlay.
 
 Config via env vars: `TRACK_ID_PORT` (default 8080), `TRACK_ID_EXIT_GRACE_MS` (default 60000).

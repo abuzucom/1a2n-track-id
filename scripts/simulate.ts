@@ -1,10 +1,12 @@
-// Posts fake Traktor deck payloads so the overlay can be developed without Traktor.
-const BASE = process.env.TRACK_ID_URL ?? 'http://127.0.0.1:8080';
+// Posts fake Traktor deck payloads so the overlay can be developed without
+// Traktor. Targets the dev port; never point this at the production server.
+const BASE = process.env.TRACK_ID_URL ?? 'http://127.0.0.1:8090';
 
+// x-simulated marks this data so the server purges it when real data arrives.
 const post = (path: string, body: unknown) =>
   fetch(`${BASE}/${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: { 'content-type': 'application/json', 'x-simulated': '1' },
     body: JSON.stringify(body),
   });
 

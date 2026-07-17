@@ -191,6 +191,20 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     });
   }
 
+  /** Clear all decks, history, and master clock (e.g. purge simulated data). */
+  reset(): void {
+    for (const t of this.pendingHistory.values()) clearTimeout(t);
+    this.pendingHistory.clear();
+    this.loggedLoadIds.clear();
+    for (const id of DECK_IDS) {
+      this.decks[id] = emptyDeck();
+      this.channelOnAir[id] = false;
+    }
+    this.history = [];
+    this.masterClock = { deck: null, bpm: null };
+    this.emitChange();
+  }
+
   loadHistory(entries: HistoryEntry[]): void {
     this.history = entries.slice(-this.maxHistory);
     this.emitChange();

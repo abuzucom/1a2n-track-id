@@ -1,11 +1,11 @@
 {
   "name": "1a2n-track-id",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "private": true,
   "description": "Local Traktor Pro 4 deck/track overlay server for OBS (Twitch DJ streams)",
   "type": "module",
   "scripts": {
-    "dev": "tsx watch src/main.ts --no-auto-exit",
+    "dev": "tsx watch src/main.ts --no-auto-exit --dev",
     "start": "npm run build && node dist/main.js",
     "build": "tsc -p tsconfig.json && node scripts/build-overlay.mjs",
     "simulate": "tsx scripts/simulate.ts",

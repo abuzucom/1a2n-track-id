@@ -112,6 +112,31 @@ describe('ingest routes', () => {
     }
   });
 
+  it('wipes simulated data as soon as real payloads arrive', async () => {
+    const sim = { headers: { 'x-simulated': '1' } };
+    await app.inject({ method: 'POST', url: '/deckLoaded/A', payload: { title: 'FakeA' }, ...sim });
+    await app.inject({ method: 'POST', url: '/updateChannel/1', payload: { isOnAir: true }, ...sim });
+    await app.inject({ method: 'POST', url: '/updateDeck/A', payload: { isPlaying: true }, ...sim });
+    await app.inject({ method: 'POST', url: '/updateMasterClock', payload: { deck: 'A', bpm: 120 }, ...sim });
+    expect((await app.inject({ method: 'GET', url: '/state' })).json().decks.A.track.title).toBe('FakeA');
+
+    // First real (untagged) payload resets decks, history, and master clock.
+    await app.inject({ method: 'POST', url: '/deckLoaded/B', payload: { title: 'RealB' } });
+    const state = (await app.inject({ method: 'GET', url: '/state' })).json();
+    expect(state.decks.A.track).toBeNull();
+    expect(state.decks.B.track.title).toBe('RealB');
+    expect(state.history).toEqual([]);
+    expect(state.masterClock).toEqual({ deck: null, bpm: null });
+  });
+
+  it('keeps real data intact when more real payloads arrive', async () => {
+    await app.inject({ method: 'POST', url: '/deckLoaded/A', payload: { title: 'RealA' } });
+    await app.inject({ method: 'POST', url: '/deckLoaded/B', payload: { title: 'RealB' } });
+    const state = (await app.inject({ method: 'GET', url: '/state' })).json();
+    expect(state.decks.A.track.title).toBe('RealA');
+    expect(state.decks.B.track.title).toBe('RealB');
+  });
+
   it('rejects non-object bodies', async () => {
     const res = await app.inject({
       method: 'POST',
