@@ -49,7 +49,7 @@ const auto = new AutoShutdown({
   graceMs,
   enabled: autoExit,
   onShutdown: () => {
-    console.log('last overlay client disconnected — shutting down.');
+    console.log('last overlay client disconnected; shutting down.');
     void shutdown(0);
   },
 });

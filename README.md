@@ -1,6 +1,6 @@
 # 1a2n-track-id
 
-Local overlay server for Twitch DJ streams: live Traktor Pro 4 deck/track info rendered as an OBS browser source — all four decks, now-playing hero with cover art, and a track history list.
+Local overlay server for Twitch DJ streams: live Traktor Pro 4 deck/track info rendered as an OBS browser source. Shows all four decks, a now-playing hero with cover art, and a track history list.
 
 ```
 Traktor Pro 4 (QML mod) --HTTP POST--> local server --WebSocket--> OBS browser source
@@ -20,7 +20,7 @@ The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/trakto
    .\traktor-mod\install.ps1
    ```
    (Backs up the stock files; `.\traktor-mod\uninstall.ps1` restores them.)
-3. Start Traktor Pro 4. If you don't own a Kontrol D2: **Preferences → Controller Manager → Add… → Traktor → Kontrol D2**. No hardware is needed — the "virtual" D2 mapping is what runs the mod.
+3. Start Traktor Pro 4. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. No hardware is needed; the "virtual" D2 mapping is what runs the mod.
 
 > **After a Traktor update:** NI updates can overwrite the mod. Just run `install.ps1` again.
 
@@ -32,8 +32,8 @@ The server exits on its own ~60 seconds after the last overlay window/OBS source
 
 ### 3. Add the overlay to OBS
 
-1. Sources → **+** → **Browser**.
-2. URL: `http://127.0.0.1:8080/overlay` — width/height: your canvas size (e.g. 1920×1080).
+1. Sources > **+** > **Browser**.
+2. URL: `http://127.0.0.1:8080/overlay`. Width/height: your canvas size (e.g. 1920x1080).
 3. The page background is transparent; position/crop as you like.
 
 Views, if you want separate OBS sources per element:

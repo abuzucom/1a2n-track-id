@@ -46,4 +46,4 @@ await sleep(8_000);
 await post('updateChannel/1', { isOnAir: false });
 await post('updateDeck/A', { isPlaying: false });
 await post('updateMasterClock', { deck: 'B', bpm: 126 });
-console.log('deck B now on air. done — leave running clients to inspect.');
+console.log('deck B now on air. Done; leave clients running to inspect.');
