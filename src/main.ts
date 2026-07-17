@@ -88,3 +88,4 @@ console.log(`  overlay:  http://${HOST}:${PORT}/overlay  (add as OBS browser sou
 console.log(`  views:    /overlay?view=now | decks | history | all`);
 console.log(`  ingest:   POST http://${HOST}:${PORT}/deckLoaded/<A-D> (Traktor QML mod)`);
 console.log(autoExit ? `  auto-exit ${graceMs / 1000}s after last client disconnects` : '  auto-exit disabled');
+console.log('waiting for Traktor deck data (each incoming post is logged here) ...');
