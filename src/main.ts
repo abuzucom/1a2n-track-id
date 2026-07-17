@@ -8,9 +8,13 @@ import { CoverArtResolver } from './covers/resolver.js';
 import { parseCliFlags } from './cli.js';
 import { formatListenError } from './server/listen-error.js';
 
-const PORT = Number(process.env.TRACK_ID_PORT ?? 8080);
+const { autoExit, resume, dev } = parseCliFlags(process.argv.slice(2));
+// Dev/simulator work uses 8090 so a leftover dev server can never collide
+// with, or serve stale data to, the production overlay on 8080.
+const DEFAULT_PORT = 8080;
+const DEV_PORT = 8090;
+const PORT = Number(process.env.TRACK_ID_PORT ?? (dev ? DEV_PORT : DEFAULT_PORT));
 const HOST = '127.0.0.1';
-const { autoExit, resume } = parseCliFlags(process.argv.slice(2));
 const graceMs = Number(process.env.TRACK_ID_EXIT_GRACE_MS ?? 60_000);
 
 const store = new TrackerStore();

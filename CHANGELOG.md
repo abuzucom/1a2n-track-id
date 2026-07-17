@@ -8,6 +8,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 - Simulator payloads are tagged; the server purges all simulated decks, history, and master clock the moment real Traktor data arrives, so demo tracks cannot linger into a live session.
 - Starting while port 8080 is taken now prints a clear message and exits instead of crashing with a stack dump.
+- Development (`npm run dev`, `npm run simulate`) moved to port 8090 so dev servers can never collide with or leak data into the production overlay on 8080.
 
 ## [0.2.0] - 2026-07-17
 
