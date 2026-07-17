@@ -10,11 +10,12 @@ const post = (path: string, body: unknown) =>
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// tempo is Traktor's tempo_for_display, a multiplier around 1.0.
 const tracks = [
-  { deck: 'A', ch: 1, title: 'Midnight Circuit', artist: 'Neon Vector', bpm: 128, resultingKey: '8A' },
-  { deck: 'B', ch: 2, title: 'Glasshouse (Extended Mix)', artist: 'Aria Flux', bpm: 126, resultingKey: '9A' },
-  { deck: 'C', ch: 3, title: 'Deep End Theory', artist: 'Subsonic Youth', bpm: 130, resultingKey: '5A' },
-  { deck: 'D', ch: 4, title: 'Afterimage', artist: 'Karst', bpm: 132, resultingKey: '11B' },
+  { deck: 'A', ch: 1, title: 'Midnight Circuit', artist: 'Neon Vector', mix: '', bpm: 128, tempo: 1.0, resultingKey: '8A', trackLength: 75 },
+  { deck: 'B', ch: 2, title: 'Glasshouse', artist: 'Aria Flux', mix: 'Extended Mix', bpm: 126, tempo: 1.016, resultingKey: '9A', trackLength: 360 },
+  { deck: 'C', ch: 3, title: 'Deep End Theory', artist: 'Subsonic Youth', mix: 'Dub', bpm: 130, tempo: 0.985, resultingKey: '5A', trackLength: 360 },
+  { deck: 'D', ch: 4, title: 'Afterimage', artist: 'Karst', mix: '', bpm: 132, tempo: 1.0, resultingKey: '11B', trackLength: 360 },
 ];
 
 console.log(`simulating decks against ${BASE} ...`);
@@ -22,22 +23,27 @@ for (const t of tracks) {
   await post(`deckLoaded/${t.deck}`, {
     title: t.title,
     artist: t.artist,
+    mix: t.mix,
     album: 'Simulated LP',
     bpm: t.bpm,
-    tempo: t.bpm,
+    tempo: t.tempo,
     resultingKey: t.resultingKey,
-    trackLength: 360,
+    trackLength: t.trackLength,
     elapsedTime: 0,
     isPlaying: false,
   });
 }
 
-// Deck A goes on air.
+// Deck A goes on air. Its short trackLength brings it into the
+// end-of-track window mid-simulation so the ending pulse is visible.
 await post('updateDeck/A', { isPlaying: true });
 await post('updateChannel/1', { isOnAir: true });
 await post('updateMasterClock', { deck: 'A', bpm: 128 });
 console.log('deck A on air; B mixes in after 15s ...');
-await sleep(15_000);
+for (let elapsed = 1; elapsed <= 15; elapsed++) {
+  await sleep(1000);
+  await post('updateDeck/A', { elapsedTime: elapsed });
+}
 
 // Mix into B.
 await post('updateDeck/B', { isPlaying: true });

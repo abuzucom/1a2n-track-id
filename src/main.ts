@@ -5,18 +5,19 @@ import { AutoShutdown } from './server/auto-shutdown.js';
 import { DECK_IDS, TrackerStore } from './state/store.js';
 import { HistoryFile } from './state/history-file.js';
 import { CoverArtResolver } from './covers/resolver.js';
+import { parseCliFlags } from './cli.js';
 
 const PORT = Number(process.env.TRACK_ID_PORT ?? 8080);
 const HOST = '127.0.0.1';
-const args = process.argv.slice(2);
-const autoExit = !args.includes('--no-auto-exit');
+const { autoExit, resume } = parseCliFlags(process.argv.slice(2));
 const graceMs = Number(process.env.TRACK_ID_EXIT_GRACE_MS ?? 60_000);
 
 const store = new TrackerStore();
 const sessionStamp = new Date().toISOString().slice(0, 10);
 const historyFile = new HistoryFile(join(process.cwd(), 'history', `session-${sessionStamp}.json`));
 
-store.loadHistory(await historyFile.load());
+// History starts empty each launch; --resume reloads today's file (e.g. after a mid-set crash).
+if (resume) store.loadHistory(await historyFile.load());
 
 let lastHistoryLen = store.snapshot().history.length;
 store.on('change', (snap) => {
