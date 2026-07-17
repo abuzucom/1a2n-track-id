@@ -1,0 +1,61 @@
+# 1a2n-track-id
+
+Local overlay server for Twitch DJ streams: live Traktor Pro 4 deck/track info rendered as an OBS browser source — all four decks, now-playing hero with cover art, and a track history list.
+
+```
+Traktor Pro 4 (QML mod) --HTTP POST--> local server --WebSocket--> OBS browser source
+```
+
+Everything runs on your machine; nothing leaves `127.0.0.1`.
+
+## Setup
+
+### 1. Install the Traktor QML mod (one time)
+
+The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/traktor-api-client), MIT) makes Traktor push deck state to `http://localhost:8080`.
+
+1. Close Traktor.
+2. Open PowerShell **as Administrator** and run:
+   ```powershell
+   .\traktor-mod\install.ps1
+   ```
+   (Backs up the stock files; `.\traktor-mod\uninstall.ps1` restores them.)
+3. Start Traktor Pro 4. If you don't own a Kontrol D2: **Preferences → Controller Manager → Add… → Traktor → Kontrol D2**. No hardware is needed — the "virtual" D2 mapping is what runs the mod.
+
+> **After a Traktor update:** NI updates can overwrite the mod. Just run `install.ps1` again.
+
+### 2. Start the overlay server
+
+Double-click **`start-overlay.cmd`** (make a desktop shortcut for pre-stream convenience). It installs dependencies on first run, starts the server, and opens the overlay in your browser as a quick check.
+
+The server exits on its own ~60 seconds after the last overlay window/OBS source disconnects (it won't exit before the first one connects). Use `node dist/main.js --no-auto-exit` to disable that.
+
+### 3. Add the overlay to OBS
+
+1. Sources → **+** → **Browser**.
+2. URL: `http://127.0.0.1:8080/overlay` — width/height: your canvas size (e.g. 1920×1080).
+3. The page background is transparent; position/crop as you like.
+
+Views, if you want separate OBS sources per element:
+
+| URL | Shows |
+| --- | --- |
+| `/overlay` | everything |
+| `/overlay?view=now` | now-playing hero only |
+| `/overlay?view=decks` | 4-deck grid only |
+| `/overlay?view=history` | track history only |
+
+## How it decides what's "on air"
+
+A deck is on air when it's playing **and** its mixer channel is audible (volume up, crossfader not fully away). A track is added to the history only after ~10 s continuously on air, so quick cuts and previews don't spam the list. History persists per day in `history/`.
+
+## Development
+
+```
+npm run dev        # server with reload (auto-exit disabled)
+npm run simulate   # fake deck data, no Traktor needed
+npm test           # vitest
+npm run lint       # eslint
+```
+
+Config via env vars: `TRACK_ID_PORT` (default 8080), `TRACK_ID_EXIT_GRACE_MS` (default 60000).
