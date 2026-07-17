@@ -61,6 +61,8 @@ export function buildApp({ store, resolver }: AppOptions): App {
   app.post<{ Params: { deck: string } }>('/deckLoaded/:deck', async (req, reply) => {
     const body = asBody(req.body);
     if (!isDeckId(req.params.deck) || !body) return reply.code(400).send({ error: 'bad request' });
+    const title = typeof body.title === 'string' ? body.title.replace(/[\r\n]/g, ' ') : '';
+    console.log(`traktor: deck ${req.params.deck} loaded: ${title || '(no title)'}`);
     store.deckLoaded(req.params.deck, body);
     return { ok: true };
   });
@@ -68,6 +70,7 @@ export function buildApp({ store, resolver }: AppOptions): App {
   app.post<{ Params: { deck: string } }>('/updateDeck/:deck', async (req, reply) => {
     const body = asBody(req.body);
     if (!isDeckId(req.params.deck) || !body) return reply.code(400).send({ error: 'bad request' });
+    if ('isPlaying' in body) console.log(`traktor: deck ${req.params.deck} isPlaying=${String(body.isPlaying)}`);
     store.updateDeck(req.params.deck, body);
     return { ok: true };
   });
