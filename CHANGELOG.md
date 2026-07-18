@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.4.3] - 2026-07-18
+
+### Changed
+
+- Track history box is narrower (max-width 480px -> 400px), based on how it reads in the current stream layout.
+
 ## [0.4.1] - 2026-07-18
 
 ### Fixed
