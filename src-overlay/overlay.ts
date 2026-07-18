@@ -282,7 +282,13 @@ function render(snap: Snapshot): void {
 function connect(): void {
   const ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = (ev) => {
-    const msg = JSON.parse(String(ev.data)) as { type: string; state: Snapshot };
+    let msg: { type: string; state: Snapshot };
+    try {
+      msg = JSON.parse(String(ev.data)) as { type: string; state: Snapshot };
+    } catch (err) {
+      console.warn('Failed to parse websocket message; dropping frame and waiting for next update:', err);
+      return;
+    }
     if (msg.type === 'state') render(msg.state);
   };
   ws.onclose = () => setTimeout(connect, 2000);

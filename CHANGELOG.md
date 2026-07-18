@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.4.6] - 2026-07-18
+
+### Fixed
+
+- Overlay WebSocket handler no longer lets a malformed frame silently stall live updates: JSON.parse failures are caught, logged, and dropped. The catch wraps only the parse step, not rendering, so a genuine rendering bug still surfaces on its own instead of being mislabeled as a parse failure.
+
 ## [0.4.5] - 2026-07-18
 
 ### Changed
