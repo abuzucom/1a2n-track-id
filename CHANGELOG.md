@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.4.0] - 2026-07-17
+
+### Added
+
+- Mixer telemetry: per-channel VU bars and EQ ticks on deck cards, crossfader strip with master VU and clip flag. New `/updateMixer` ingest route fed by ApiMixer.qml at 10 Hz (idle frames skipped).
+- Loop and key lock state: LOOP and KEY LOCK tags on deck cards.
+- Key display: live resulting key and BPM on now-playing slots; Camelot harmonic-compatibility dot on decks matching the on-air track.
+- Simulator sends EQ, crossfader sweeps, and pseudo-level mixer frames.
+
+Re-run `traktor-mod\install.ps1` to pick up the QML changes.
+
 ## [0.3.0] - 2026-07-17
 
 ### Added

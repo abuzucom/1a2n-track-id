@@ -12,4 +12,5 @@ Module {
   ApiDeck { deckId: 3 }
 
   ApiMasterClock {}
+  ApiMixer {}
 }

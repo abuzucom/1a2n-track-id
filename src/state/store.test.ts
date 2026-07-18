@@ -140,6 +140,44 @@ describe('TrackerStore', () => {
     expect(store.snapshot().history.map((h) => h.title)).toEqual(['Anthem', 'Interlude', 'Anthem']);
   });
 
+  it('normalizes and clamps mixer frames', () => {
+    store.updateMixer({
+      channels: [{ level: 0.4 }, { level: 1.7 }, { level: -0.2 }, { level: 'x' }],
+      xfader: 0.25,
+      master: { left: 0.5, right: 2, sum: 0.6, clip: true },
+    });
+    const mixer = store.snapshot().mixer;
+    expect(mixer.channels.map((c) => c.level)).toEqual([0.4, 1, 0, 0]);
+    expect(mixer.xfader).toBe(0.25);
+    expect(mixer.master).toEqual({ left: 0.5, right: 1, sum: 0.6, clip: true });
+  });
+
+  it('stores eq values per channel via updateChannel', () => {
+    store.updateChannel(2, { eq: { high: 0.7, mid: 0.5, low: 1.9 } });
+    expect(store.snapshot().mixer.channels[1]?.eq).toEqual({ high: 0.7, mid: 0.5, low: 1 });
+  });
+
+  it('passes isLooping and isKeyLockOn through updateDeck', () => {
+    load(store, 'A', 'Loopy');
+    store.updateDeck('A', { isLooping: true, isKeyLockOn: true });
+    const deck = store.snapshot().decks.A;
+    expect(deck.isLooping).toBe(true);
+    expect(deck.isKeyLockOn).toBe(true);
+  });
+
+  it('mixer frames do not disturb decks, history, or on-air state', () => {
+    load(store, 'A', 'Steady');
+    store.updateChannel(1, { isOnAir: true });
+    store.updateDeck('A', { isPlaying: true });
+    vi.advanceTimersByTime(5000);
+    const before = store.snapshot();
+    store.updateMixer({ channels: [{ level: 0.9 }], xfader: 0.5, master: { sum: 0.9 } });
+    vi.advanceTimersByTime(60_000);
+    const after = store.snapshot();
+    expect(after.decks).toEqual(before.decks);
+    expect(after.history).toEqual(before.history);
+  });
+
   it('emits change events with a snapshot', () => {
     const seen: string[] = [];
     store.on('change', (snap) => seen.push(snap.decks.C.track?.title ?? ''));

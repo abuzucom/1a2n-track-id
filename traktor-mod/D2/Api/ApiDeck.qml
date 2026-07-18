@@ -81,6 +81,16 @@ Item {
       })
     }
   }
+  AppProperty {
+    id: propIsLooping
+    path: pathPrefix + "loop.is_in_active_loop"
+
+    onValueChanged: {
+      ApiClient.send("updateDeck/" + deckLetter, {
+        isLooping: propIsLooping.value,
+      })
+    }
+  }
 
   Timer {
     id: deckLoadedTimer
@@ -130,6 +140,7 @@ Item {
         isPlaying:    propIsPlaying.value,
         isSynced:     propIsSynced.value,
         isKeyLockOn:  propIsKeyLockOn.value,
+        isLooping:    propIsLooping.value,
       })
   }
 

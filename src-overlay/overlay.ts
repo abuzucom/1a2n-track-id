@@ -1,6 +1,6 @@
 // OBS browser-source overlay client. Renders deck/track state pushed over WebSocket.
 // All track metadata is untrusted: only ever assigned via textContent, never innerHTML.
-import { formatDeckBpm, formatTitle, isEnding } from './format.js';
+import { camelotCompatible, clamp01, eqOffsetPercent, formatDeckBpm, formatTitle, isEnding } from './format.js';
 
 interface Track {
   title: string;
@@ -16,8 +16,16 @@ interface Track {
 interface Deck {
   track: Track | null;
   isPlaying: boolean;
+  isLooping: boolean;
+  isKeyLockOn: boolean;
   onAir: boolean;
   elapsedTime: number;
+}
+
+interface Mixer {
+  channels: { level: number; eq: { high: number; mid: number; low: number } }[];
+  xfader: number;
+  master: { left: number; right: number; sum: number; clip: boolean };
 }
 
 interface HistoryEntry {
@@ -31,6 +39,7 @@ interface Snapshot {
   decks: Record<DeckId, Deck>;
   history: HistoryEntry[];
   masterClock: { deck: DeckId | null; bpm: number | null };
+  mixer: Mixer;
 }
 
 const DECKS: readonly DeckId[] = ['A', 'B', 'C', 'D'];
@@ -86,10 +95,45 @@ const deckEls = DECKS.map((letter) => {
   const card = el('div', 'deck card', deckGrid);
   const head = el('div', 'head', card);
   el('div', 'letter', head).textContent = letter;
+  const compat = el('div', 'compat', head);
+  compat.title = 'key compatible with the on-air track';
+  const loopTag = el('div', 'tag', head);
+  loopTag.textContent = 'LOOP';
+  loopTag.style.display = 'none';
+  const keyLockTag = el('div', 'tag', head);
+  keyLockTag.textContent = 'KEY LOCK';
+  keyLockTag.style.display = 'none';
   const stats = el('div', 'stats', head);
+  const eq = el('div', 'eq', head);
+  const eqBars = (['high', 'mid', 'low'] as const).map(() => {
+    const track = document.createElement('span');
+    const fill = document.createElement('i');
+    track.appendChild(fill);
+    eq.appendChild(track);
+    return fill;
+  });
   const body = el('div', 'body', card);
-  return { card, stats, body };
+  const vu = el('div', 'vu', card);
+  const vuFill = document.createElement('i');
+  vu.appendChild(vuFill);
+  return { card, stats, body, loopTag, keyLockTag, eqBars, vuFill };
 });
+
+const mixerStrip = el('div', 'mixer card', root);
+el('span', '', mixerStrip).textContent = 'A';
+const xfaderTrack = el('div', 'xfader', mixerStrip);
+const xfaderMarker = document.createElement('i');
+xfaderTrack.appendChild(xfaderMarker);
+el('span', '', mixerStrip).textContent = 'B';
+const masterBox = el('div', 'master', mixerStrip);
+const masterBars = [0, 1].map(() => {
+  const bar = el('div', 'bar', masterBox);
+  const fill = document.createElement('i');
+  bar.appendChild(fill);
+  return fill;
+});
+const clipTag = el('div', 'clip', mixerStrip);
+clipTag.textContent = 'CLIP';
 
 const historyBox = el('div', 'history card', root);
 el('h2', '', historyBox).textContent = 'Track History';
@@ -104,6 +148,7 @@ interface HeroSlot {
   art: HTMLImageElement;
   title: HTMLDivElement;
   artist: HTMLDivElement;
+  stats: HTMLDivElement;
   badge: HTMLDivElement;
   key: string;
 }
@@ -115,8 +160,9 @@ function buildHeroSlot(): HeroSlot {
   const meta = el('div', 'meta', row);
   const title = el('div', 'title', meta);
   const artist = el('div', 'artist', meta);
+  const stats = el('div', 'stats', row);
   const badge = el('div', 'badge', row);
-  return { row, art, title, artist, badge, key: '' };
+  return { row, art, title, artist, stats, badge, key: '' };
 }
 const heroSlots = DECKS.map(buildHeroSlot);
 
@@ -139,6 +185,7 @@ function fillHeroSlot(ui: HeroSlot, deck: Deck, isMaster: boolean): void {
     ui.row.classList.remove('visible');
     void ui.row.offsetWidth;
   }
+  ui.stats.textContent = statsText(deck.track);
   ui.badge.textContent = isMaster ? 'ON AIR' : 'MIXING';
   ui.badge.classList.toggle('onair', isMaster);
   ui.badge.classList.toggle('mixing', !isMaster);
@@ -169,29 +216,72 @@ function statsText(track: Track): string {
   return parts.join(' | ');
 }
 
+type DeckCardUi = (typeof deckEls)[number];
+
+/** Id of the master on-air deck, falling back to the first live deck. */
+function masterOnAirDeckId(snap: Snapshot): DeckId | null {
+  const isLive = (id: DeckId) => {
+    const deck = snap.decks[id];
+    return deck.onAir && deck.isPlaying && deck.track !== null;
+  };
+  const master = snap.masterClock.deck;
+  if (master !== null && isLive(master)) return master;
+  return DECKS.find(isLive) ?? null;
+}
+
+function renderDeckCard(ui: DeckCardUi, deck: Deck, masterKey: string, onAirMaster: boolean): void {
+  ui.card.classList.toggle('onair', deck.onAir);
+  ui.card.classList.toggle('playing', deck.isPlaying);
+  ui.card.classList.toggle('ending', isEnding(deck));
+  ui.loopTag.style.display = deck.isLooping ? '' : 'none';
+  ui.keyLockTag.style.display = deck.isKeyLockOn ? '' : 'none';
+  const compatible =
+    !onAirMaster && deck.track !== null && camelotCompatible(deck.track.resultingKey, masterKey);
+  ui.card.classList.toggle('compatible', compatible);
+  ui.body.replaceChildren();
+  if (deck.track) {
+    ui.stats.textContent = statsText(deck.track);
+    if (deck.track.artUrl) {
+      const art = el('img', 'art', ui.body);
+      art.alt = '';
+      art.src = deck.track.artUrl;
+    }
+    el('div', 'title', ui.body).textContent = formatTitle(deck.track.title, deck.track.mix);
+    el('div', 'artist', ui.body).textContent = deck.track.artist || 'Unknown artist';
+  } else {
+    ui.stats.textContent = '';
+    el('div', 'empty', ui.body).textContent = 'no track loaded';
+  }
+}
+
 function renderDecks(snap: Snapshot): void {
+  const masterId = masterOnAirDeckId(snap);
+  const masterKey = masterId ? snap.decks[masterId].track?.resultingKey ?? '' : '';
   DECKS.forEach((letter, i) => {
     const deck = snap.decks[letter];
     const ui = deckEls[i];
     if (!ui) return;
-    ui.card.classList.toggle('onair', deck.onAir);
-    ui.card.classList.toggle('playing', deck.isPlaying);
-    ui.card.classList.toggle('ending', isEnding(deck));
-    ui.body.replaceChildren();
-    if (deck.track) {
-      ui.stats.textContent = statsText(deck.track);
-      if (deck.track.artUrl) {
-        const art = el('img', 'art', ui.body);
-        art.alt = '';
-        art.src = deck.track.artUrl;
-      }
-      el('div', 'title', ui.body).textContent = formatTitle(deck.track.title, deck.track.mix);
-      el('div', 'artist', ui.body).textContent = deck.track.artist || 'Unknown artist';
-    } else {
-      ui.stats.textContent = '';
-      el('div', 'empty', ui.body).textContent = 'no track loaded';
+    renderDeckCard(ui, deck, masterKey, letter === masterId);
+    const channel = snap.mixer.channels[i];
+    if (channel) {
+      ui.vuFill.style.width = `${clamp01(channel.level) * 100}%`;
+      const values = [channel.eq.high, channel.eq.mid, channel.eq.low];
+      ui.eqBars.forEach((fill, j) => {
+        const offset = eqOffsetPercent(values[j] ?? 0.5);
+        fill.style.height = `${Math.abs(offset) / 2}%`;
+        fill.style.bottom = offset >= 0 ? '50%' : `${50 - Math.abs(offset) / 2}%`;
+      });
     }
   });
+}
+
+function renderMixer(snap: Snapshot): void {
+  xfaderMarker.style.left = `${clamp01(snap.mixer.xfader) * 100}%`;
+  const left = masterBars[0];
+  const right = masterBars[1];
+  if (left) left.style.width = `${clamp01(snap.mixer.master.left) * 100}%`;
+  if (right) right.style.width = `${clamp01(snap.mixer.master.right) * 100}%`;
+  mixerStrip.classList.toggle('clipping', snap.mixer.master.clip);
 }
 
 // --- history ----------------------------------------------------------------------
@@ -216,6 +306,7 @@ function renderHistory(snap: Snapshot): void {
 function render(snap: Snapshot): void {
   renderHeroes(snap);
   renderDecks(snap);
+  renderMixer(snap);
   renderHistory(snap);
 }
 

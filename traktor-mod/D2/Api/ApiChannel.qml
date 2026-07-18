@@ -10,10 +10,27 @@ Item {
   readonly property string    pathPrefix:  "app.traktor.mixer.channels." + index + "."
 
   AppProperty { id: propVolume;             path: pathPrefix + "volume";               onValueChanged: updateOnAirState() }
+  AppProperty { id: propEqHigh;             path: pathPrefix + "eq.high";              onValueChanged: eqChangedTimer.restart() }
+  AppProperty { id: propEqMid;              path: pathPrefix + "eq.mid";               onValueChanged: eqChangedTimer.restart() }
+  AppProperty { id: propEqLow;              path: pathPrefix + "eq.low";               onValueChanged: eqChangedTimer.restart() }
   AppProperty { id: propXfaderAssignLeft;   path: pathPrefix + "xfader_assign.left";   onValueChanged: updateOnAirState() }
   AppProperty { id: propXfaderAssignRight;  path: pathPrefix + "xfader_assign.right";  onValueChanged: updateOnAirState() }
   AppProperty { id: propXfaderAdjust;       path: "app.traktor.mixer.xfader.adjust";   onValueChanged: updateOnAirState() }
 
+  Timer {
+    id: eqChangedTimer
+    interval: 250
+
+    onTriggered: {
+      ApiClient.send("updateChannel/" + index, {
+        eq: {
+          high: propEqHigh.value,
+          mid: propEqMid.value,
+          low: propEqLow.value,
+        },
+      })
+    }
+  }
   Timer {
     id: onAirLevelChangedTimer
     interval: 250
