@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.4.1] - 2026-07-18
+
+### Fixed
+
+- `start-overlay.cmd` left an orphaned node.exe process running after the launcher window closed. npm's launch chain nests four processes deep (cmd -> node(npm) -> cmd -> node(server)), and Windows does not reliably propagate a window close that far. The launcher is now a PowerShell script (`start-overlay.ps1`, invoked by the unchanged `start-overlay.cmd` entry point) that starts node directly, two hops instead of four, and binds the server's lifetime to the window through three independent mechanisms: a try/finally around the wait (Ctrl+C, `exit`, normal completion), a PowerShell.Exiting engine event, and a Windows Job Object with kill-on-close for forceful kills.
+
 ## [0.4.0] - 2026-07-17
 
 ### Added
