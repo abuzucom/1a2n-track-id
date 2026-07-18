@@ -18,6 +18,24 @@ Item {
   AppProperty { id: propXfaderAdjust;       path: "app.traktor.mixer.xfader.adjust";   onValueChanged: updateOnAirState() }
 
   Timer {
+    // Keep-alive: re-send channel state so a server started after the last
+    // on-air transition still converges (same pattern as ApiDeck).
+    interval: 10000
+    repeat: true
+    running: true
+
+    onTriggered: {
+      ApiClient.send("updateChannel/" + index, {
+        isOnAir: computeIsOnAir(),
+        eq: {
+          high: propEqHigh.value,
+          mid: propEqMid.value,
+          low: propEqLow.value,
+        },
+      })
+    }
+  }
+  Timer {
     id: eqChangedTimer
     interval: 250
 
@@ -51,11 +69,15 @@ Item {
     }
   }
 
-  function updateOnAirState() {
-    var isOnAir = propVolume.value > 0
+  function computeIsOnAir() {
+    return propVolume.value > 0
       && ((!propXfaderAssignLeft.value && !propXfaderAssignRight.value)
         || (propXfaderAssignLeft.value && propXfaderAdjust.value < 1)
         || (propXfaderAssignRight.value && propXfaderAdjust.value > 0))
+  }
+
+  function updateOnAirState() {
+    var isOnAir = computeIsOnAir()
 
     if (isOnAir != isOnAirState) {
       ApiClient.send("updateChannel/" + index, {

@@ -12,6 +12,14 @@ Item {
 
     onTriggered: updateMasterClock()
   }
+  Timer {
+    // Keep-alive: re-send so a freshly started server learns the master deck.
+    interval: 10000
+    repeat: true
+    running: true
+
+    onTriggered: updateMasterClock()
+  }
 
   function updateMasterClock() {
     ApiClient.send("updateMasterClock", {
