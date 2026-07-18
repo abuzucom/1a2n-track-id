@@ -1,6 +1,6 @@
 {
   "name": "1a2n-track-id",
-  "version": "0.4.1",
+  "version": "0.4.3",
   "private": true,
   "description": "Local Traktor Pro 4 deck/track overlay server for OBS (Twitch DJ streams)",
   "type": "module",
