@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.4.5] - 2026-07-18
+
+### Changed
+
+- Synced AGENTS.md with abuzucom/agents (upstream commit 1f44950, PR #5): added critical rule 10, "Verify state before assuming workflow intent". Propagated to all synced tool copies via `python scripts/sync.py`.
+
 ## [0.4.4] - 2026-07-18
 
 ### Removed
