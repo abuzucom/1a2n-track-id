@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.4.2] - 2026-07-18
+
+### Removed
+
+- Per-deck VU meter and the crossfader/master-VU strip; not useful in practice. EQ ticks, LOOP/KEY LOCK tags, and the key-compatibility dot are unaffected.
+
 ## [0.4.0] - 2026-07-17
 
 ### Added
