@@ -1,6 +1,6 @@
 // OBS browser-source overlay client. Renders deck/track state pushed over WebSocket.
 // All track metadata is untrusted: only ever assigned via textContent, never innerHTML.
-import { camelotCompatible, clamp01, eqOffsetPercent, formatDeckBpm, formatTitle, isEnding } from './format.js';
+import { camelotCompatible, eqOffsetPercent, formatDeckBpm, formatTitle, isEnding } from './format.js';
 
 interface Track {
   title: string;
@@ -23,9 +23,7 @@ interface Deck {
 }
 
 interface Mixer {
-  channels: { level: number; eq: { high: number; mid: number; low: number } }[];
-  xfader: number;
-  master: { left: number; right: number; sum: number; clip: boolean };
+  channels: { eq: { high: number; mid: number; low: number } }[];
 }
 
 interface HistoryEntry {
@@ -113,27 +111,8 @@ const deckEls = DECKS.map((letter) => {
     return fill;
   });
   const body = el('div', 'body', card);
-  const vu = el('div', 'vu', card);
-  const vuFill = document.createElement('i');
-  vu.appendChild(vuFill);
-  return { card, stats, body, loopTag, keyLockTag, eqBars, vuFill };
+  return { card, stats, body, loopTag, keyLockTag, eqBars };
 });
-
-const mixerStrip = el('div', 'mixer card', root);
-el('span', '', mixerStrip).textContent = 'A';
-const xfaderTrack = el('div', 'xfader', mixerStrip);
-const xfaderMarker = document.createElement('i');
-xfaderTrack.appendChild(xfaderMarker);
-el('span', '', mixerStrip).textContent = 'B';
-const masterBox = el('div', 'master', mixerStrip);
-const masterBars = [0, 1].map(() => {
-  const bar = el('div', 'bar', masterBox);
-  const fill = document.createElement('i');
-  bar.appendChild(fill);
-  return fill;
-});
-const clipTag = el('div', 'clip', mixerStrip);
-clipTag.textContent = 'CLIP';
 
 const historyBox = el('div', 'history card', root);
 el('h2', '', historyBox).textContent = 'Track History';
@@ -264,7 +243,6 @@ function renderDecks(snap: Snapshot): void {
     renderDeckCard(ui, deck, masterKey, letter === masterId);
     const channel = snap.mixer.channels[i];
     if (channel) {
-      ui.vuFill.style.width = `${clamp01(channel.level) * 100}%`;
       const values = [channel.eq.high, channel.eq.mid, channel.eq.low];
       ui.eqBars.forEach((fill, j) => {
         const offset = eqOffsetPercent(values[j] ?? 0.5);
@@ -273,15 +251,6 @@ function renderDecks(snap: Snapshot): void {
       });
     }
   });
-}
-
-function renderMixer(snap: Snapshot): void {
-  xfaderMarker.style.left = `${clamp01(snap.mixer.xfader) * 100}%`;
-  const left = masterBars[0];
-  const right = masterBars[1];
-  if (left) left.style.width = `${clamp01(snap.mixer.master.left) * 100}%`;
-  if (right) right.style.width = `${clamp01(snap.mixer.master.right) * 100}%`;
-  mixerStrip.classList.toggle('clipping', snap.mixer.master.clip);
 }
 
 // --- history ----------------------------------------------------------------------
@@ -306,7 +275,6 @@ function renderHistory(snap: Snapshot): void {
 function render(snap: Snapshot): void {
   renderHeroes(snap);
   renderDecks(snap);
-  renderMixer(snap);
   renderHistory(snap);
 }
 

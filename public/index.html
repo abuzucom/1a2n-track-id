@@ -144,6 +144,9 @@
   }
   .deck .artist { font-size: 12px; color: var(--concrete); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .deck .empty { color: var(--dull-silver); font-family: var(--font-utility); font-size: 11px; }
+  /* flow-root contains the floated art thumbnail below (previously done by
+     the removed .vu meter's clear:both). */
+  .deck .body { display: flow-root; }
   .deck .art { float: left; width: 40px; height: 40px; border-radius: var(--radius); margin-right: 8px; object-fit: cover; background: var(--charcoal); }
   .deck .tag {
     font-family: var(--font-utility); font-weight: 700;
@@ -168,39 +171,6 @@
     bottom: 50%; height: 0;
     transition: height .15s ease, bottom .15s ease;
   }
-  .deck .vu {
-    margin-top: 8px; height: 3px;
-    background: var(--charcoal); border-radius: var(--radius);
-    overflow: hidden; clear: both;
-  }
-  .deck .vu i {
-    display: block; height: 100%; width: 0;
-    background: var(--paper);
-    transition: width .1s linear;
-  }
-
-  /* mixer strip: crossfader + master VU */
-  .mixer {
-    display: flex; align-items: center; gap: 18px;
-    padding: 10px 16px;
-    font-family: var(--font-utility); font-size: 10px;
-    color: var(--dull-silver); letter-spacing: .1em;
-  }
-  .mixer .xfader {
-    flex: 1; height: 3px; background: var(--charcoal);
-    position: relative; border-radius: var(--radius);
-  }
-  .mixer .xfader i {
-    position: absolute; top: -4px; width: 3px; height: 11px;
-    background: var(--paper); border-radius: var(--radius);
-    left: 50%; transition: left .1s linear;
-  }
-  .mixer .master { display: flex; flex-direction: column; gap: 3px; width: 120px; }
-  .mixer .master .bar { height: 3px; background: var(--charcoal); border-radius: var(--radius); overflow: hidden; }
-  .mixer .master .bar i { display: block; height: 100%; width: 0; background: var(--paper); transition: width .1s linear; }
-  .mixer .clip { opacity: 0; color: var(--pitch); background: var(--paper); padding: 1px 5px; font-weight: 700; border-radius: var(--radius); }
-  .mixer.clipping .clip { opacity: 1; }
-
   /* history */
   .history {
     padding: 12px 16px;
@@ -218,9 +188,9 @@
   .history li:last-child { animation: slidein .4s ease; }
   @keyframes slidein { from { opacity: 0; transform: translateX(-10px); } }
 
-  body[data-view="now"] .decks, body[data-view="now"] .history, body[data-view="now"] .mixer { display: none; }
+  body[data-view="now"] .decks, body[data-view="now"] .history { display: none; }
   body[data-view="decks"] #heroes, body[data-view="decks"] .history { display: none; }
-  body[data-view="history"] #heroes, body[data-view="history"] .decks, body[data-view="history"] .mixer { display: none; }
+  body[data-view="history"] #heroes, body[data-view="history"] .decks { display: none; }
 </style>
 </head>
 <body>
