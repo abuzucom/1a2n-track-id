@@ -25,10 +25,29 @@ export interface DeckState {
   track: TrackInfo | null;
   isPlaying: boolean;
   isSynced: boolean;
+  isLooping: boolean;
+  isKeyLockOn: boolean;
   elapsedTime: number;
   onAir: boolean;
   /** Monotonic id incremented on every deckLoaded, distinguishes replays of the same file. */
   loadId: number;
+}
+
+export interface EqState {
+  high: number;
+  mid: number;
+  low: number;
+}
+
+export interface MixerChannel {
+  level: number;
+  eq: EqState;
+}
+
+export interface MixerState {
+  channels: MixerChannel[];
+  xfader: number;
+  master: { left: number; right: number; sum: number; clip: boolean };
 }
 
 export interface HistoryEntry {
@@ -51,6 +70,7 @@ export interface Snapshot {
   decks: Record<DeckId, DeckState>;
   history: HistoryEntry[];
   masterClock: MasterClock;
+  mixer: MixerState;
 }
 
 export type ClientTrackInfo = Omit<TrackInfo, 'filePath'>;
@@ -59,6 +79,7 @@ export interface ClientSnapshot {
   decks: Record<DeckId, Omit<DeckState, 'track'> & { track: ClientTrackInfo | null }>;
   history: ClientHistoryEntry[];
   masterClock: MasterClock;
+  mixer: MixerState;
 }
 
 function withoutFilePath<T extends { filePath: string }>(obj: T): Omit<T, 'filePath'> {
@@ -78,6 +99,7 @@ export function toClientSnapshot(snap: Snapshot): ClientSnapshot {
     decks,
     history: snap.history.map(withoutFilePath),
     masterClock: snap.masterClock,
+    mixer: snap.mixer,
   };
 }
 
@@ -92,9 +114,27 @@ const num = (v: unknown): number | null => {
   return typeof n === 'number' && Number.isFinite(n) ? n : null;
 };
 const bool = (v: unknown): boolean => v === true || v === 'true' || v === 1;
+const clamp01 = (v: unknown): number => Math.min(1, Math.max(0, num(v) ?? 0));
 
 function emptyDeck(): DeckState {
-  return { track: null, isPlaying: false, isSynced: false, elapsedTime: 0, onAir: false, loadId: 0 };
+  return {
+    track: null,
+    isPlaying: false,
+    isSynced: false,
+    isLooping: false,
+    isKeyLockOn: false,
+    elapsedTime: 0,
+    onAir: false,
+    loadId: 0,
+  };
+}
+
+function emptyMixer(): MixerState {
+  return {
+    channels: [0, 1, 2, 3].map(() => ({ level: 0, eq: { high: 0.5, mid: 0.5, low: 0.5 } })),
+    xfader: 0.5,
+    master: { left: 0, right: 0, sum: 0, clip: false },
+  };
 }
 
 export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
@@ -107,6 +147,7 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
   private readonly channelOnAir: Record<DeckId, boolean> = { A: false, B: false, C: false, D: false };
   private history: HistoryEntry[] = [];
   private masterClock: MasterClock = { deck: null, bpm: null };
+  private mixer: MixerState = emptyMixer();
   private readonly debounceMs: number;
   private readonly maxHistory: number;
   private readonly pendingHistory = new Map<DeckId, NodeJS.Timeout>();
@@ -161,6 +202,8 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     const d = this.deck(deck);
     if ('isPlaying' in payload) d.isPlaying = bool(payload.isPlaying);
     if ('isSynced' in payload) d.isSynced = bool(payload.isSynced);
+    if ('isLooping' in payload) d.isLooping = bool(payload.isLooping);
+    if ('isKeyLockOn' in payload) d.isKeyLockOn = bool(payload.isKeyLockOn);
     if ('elapsedTime' in payload) d.elapsedTime = num(payload.elapsedTime) ?? d.elapsedTime;
     if (d.track) {
       if ('tempo' in payload) d.track.tempo = num(payload.tempo);
@@ -174,7 +217,35 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     const deck = DECK_IDS[index - 1];
     if (!deck) throw new RangeError(`invalid channel index: ${index}`);
     if ('isOnAir' in payload) this.channelOnAir[deck] = bool(payload.isOnAir);
+    const eq = payload.eq;
+    const channel = this.mixer.channels[index - 1];
+    if (typeof eq === 'object' && eq !== null && channel) {
+      const raw = eq as Record<string, unknown>;
+      channel.eq = { high: clamp01(raw.high), mid: clamp01(raw.mid), low: clamp01(raw.low) };
+    }
     this.recomputeOnAir(deck);
+    this.emitChange();
+  }
+
+  updateMixer(payload: Record<string, unknown>): void {
+    const channels = Array.isArray(payload.channels) ? payload.channels : [];
+    channels.slice(0, 4).forEach((ch, i) => {
+      const target = this.mixer.channels[i];
+      if (typeof ch === 'object' && ch !== null && target) {
+        target.level = clamp01((ch as Record<string, unknown>).level);
+      }
+    });
+    if ('xfader' in payload) this.mixer.xfader = clamp01(payload.xfader);
+    const master = payload.master;
+    if (typeof master === 'object' && master !== null) {
+      const raw = master as Record<string, unknown>;
+      this.mixer.master = {
+        left: clamp01(raw.left),
+        right: clamp01(raw.right),
+        sum: clamp01(raw.sum),
+        clip: bool(raw.clip),
+      };
+    }
     this.emitChange();
   }
 
@@ -199,6 +270,7 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
       decks: this.decks,
       history: this.history,
       masterClock: this.masterClock,
+      mixer: this.mixer,
     });
   }
 
@@ -213,6 +285,7 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     }
     this.history = [];
     this.masterClock = { deck: null, bpm: null };
+    this.mixer = emptyMixer();
     this.emitChange();
   }
 

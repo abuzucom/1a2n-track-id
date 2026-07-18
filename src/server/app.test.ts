@@ -137,6 +137,24 @@ describe('ingest routes', () => {
     expect(state.decks.B.track.title).toBe('RealB');
   });
 
+  it('accepts mixer frames and exposes them via /state', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/updateMixer',
+      payload: { channels: [{ level: 0.3 }], xfader: 0.8, master: { sum: 0.4 } },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = (await app.inject({ method: 'GET', url: '/state' })).json();
+    expect(body.mixer.channels[0].level).toBe(0.3);
+    expect(body.mixer.xfader).toBe(0.8);
+  });
+
+  it('rejects bad mixer bodies', async () => {
+    expect(
+      (await app.inject({ method: 'POST', url: '/updateMixer', payload: '[1]', headers: { 'content-type': 'application/json' } })).statusCode,
+    ).toBe(400);
+  });
+
   it('rejects non-object bodies', async () => {
     const res = await app.inject({
       method: 'POST',

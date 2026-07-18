@@ -57,6 +57,10 @@ A deck is on air when it's playing **and** its mixer channel is audible (volume 
 
 History starts empty on every launch and is written to `history/session-<date>.json` as tracks play; start with `--resume` to reload today's file (e.g. after a mid-set restart).
 
+## Mixer telemetry
+
+Deck cards show live VU bars, EQ positions, LOOP and KEY LOCK tags, and a dot when a deck's key is Camelot-compatible with the on-air track. Below the grid, a crossfader strip tracks the fader with master VU and a clip flag. Data arrives at 10 Hz from the QML mod; idle mixers send nothing. Re-run `traktor-mod\install.ps1` after updating to enable it.
+
 ## Development
 
 ```

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDeckBpm, formatTitle, isEnding } from './format.js';
+import { camelotCompatible, clamp01, eqOffsetPercent, formatDeckBpm, formatTitle, isEnding } from './format.js';
 
 describe('formatDeckBpm', () => {
   it('applies the tempo multiplier to the base bpm', () => {
@@ -36,6 +36,48 @@ describe('formatTitle', () => {
 
   it('falls back for missing titles', () => {
     expect(formatTitle('', '')).toBe('Unknown title');
+  });
+});
+
+describe('clamp01 and eqOffsetPercent', () => {
+  it('clamps to the unit range', () => {
+    expect(clamp01(0.4)).toBe(0.4);
+    expect(clamp01(-2)).toBe(0);
+    expect(clamp01(7)).toBe(1);
+    expect(clamp01(null)).toBe(0);
+  });
+
+  it('maps eq 0..1 to -100..100 percent from center', () => {
+    expect(eqOffsetPercent(0.5)).toBe(0);
+    expect(eqOffsetPercent(1)).toBe(100);
+    expect(eqOffsetPercent(0)).toBe(-100);
+    expect(eqOffsetPercent(0.75)).toBe(50);
+  });
+});
+
+describe('camelotCompatible', () => {
+  it('accepts same key, wheel neighbors, and relative', () => {
+    expect(camelotCompatible('8A', '8A')).toBe(true);
+    expect(camelotCompatible('8A', '9A')).toBe(true);
+    expect(camelotCompatible('8A', '7A')).toBe(true);
+    expect(camelotCompatible('8A', '8B')).toBe(true);
+  });
+
+  it('wraps the wheel between 12 and 1', () => {
+    expect(camelotCompatible('12A', '1A')).toBe(true);
+    expect(camelotCompatible('1B', '12B')).toBe(true);
+  });
+
+  it('rejects incompatible and cross-letter neighbors', () => {
+    expect(camelotCompatible('8A', '5A')).toBe(false);
+    expect(camelotCompatible('8A', '9B')).toBe(false);
+  });
+
+  it('rejects malformed or missing keys without guessing', () => {
+    expect(camelotCompatible('', '8A')).toBe(false);
+    expect(camelotCompatible('Am', '8A')).toBe(false);
+    expect(camelotCompatible('13A', '1A')).toBe(false);
+    expect(camelotCompatible('0A', '1A')).toBe(false);
   });
 });
 

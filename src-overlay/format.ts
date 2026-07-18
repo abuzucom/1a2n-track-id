@@ -23,6 +23,38 @@ export function formatTitle(title: string, mix: string): string {
   return `${title} (${mix})`;
 }
 
+/** Clamp to the unit range; non-numbers become 0. */
+export function clamp01(v: number | null | undefined): number {
+  if (typeof v !== 'number' || !Number.isFinite(v)) return 0;
+  return Math.min(1, Math.max(0, v));
+}
+
+/** Map an EQ knob value (0..1, 0.5 center) to -100..100 percent from center. */
+export function eqOffsetPercent(value: number): number {
+  return Math.round((clamp01(value) - 0.5) * 200);
+}
+
+const CAMELOT = /^([1-9]|1[0-2])([AB])$/;
+const CAMELOT_POSITIONS = 12;
+
+/**
+ * True when two Camelot keys mix harmonically: same key, a wheel neighbor
+ * (wrapping 12 to 1), or the relative key (same number, A/B swapped).
+ * Unparseable keys return false; never guess.
+ */
+export function camelotCompatible(a: string, b: string): boolean {
+  const ma = CAMELOT.exec(a);
+  const mb = CAMELOT.exec(b);
+  if (!ma || !mb || !ma[1] || !mb[1]) return false;
+  const na = Number(ma[1]);
+  const nb = Number(mb[1]);
+  if (ma[2] === mb[2]) {
+    const dist = Math.abs(na - nb);
+    return dist === 0 || dist === 1 || dist === CAMELOT_POSITIONS - 1;
+  }
+  return na === nb;
+}
+
 interface EndingDeck {
   isPlaying: boolean;
   elapsedTime: number;

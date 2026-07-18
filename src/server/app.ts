@@ -85,6 +85,13 @@ export function buildApp({ store, resolver }: AppOptions): App {
     return { ok: true };
   });
 
+  app.post('/updateMixer', async (req, reply) => {
+    const body = asBody(req.body);
+    if (!body) return reply.code(400).send({ error: 'bad request' });
+    store.updateMixer(body);
+    return { ok: true };
+  });
+
   app.post('/updateMasterClock', async (req, reply) => {
     const body = asBody(req.body);
     if (!body) return reply.code(400).send({ error: 'bad request' });
