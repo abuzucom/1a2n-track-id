@@ -113,7 +113,10 @@ export function buildApp({ store, resolver }: AppOptions): App {
       try {
         const content = await readFile(join(PUBLIC_DIR, file));
         return reply.type(type).send(content);
-      } catch {
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          console.error(`static file read failed for ${file}:`, err);
+        }
         return reply.code(404).send({ error: 'not built' });
       }
     });

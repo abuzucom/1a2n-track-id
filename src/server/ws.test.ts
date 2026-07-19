@@ -1,5 +1,5 @@
 import { once } from 'node:events';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import WebSocket from 'ws';
 import { buildApp, type App } from './app.js';
 import { attachWebSocket, type WsHub } from './ws.js';
@@ -72,6 +72,38 @@ describe('WebSocket hub', () => {
     expect(raw).not.toContain('filePath');
     expect(raw).not.toContain('jonathan');
     ws.close();
+  });
+
+  it('logs client socket errors instead of swallowing them', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const ws = new WebSocket(url);
+    await nextMessage(ws); // wait for the server-side connection to register
+    const [serverSocket] = hub['wss'].clients;
+    if (!serverSocket) throw new Error('no connected client');
+    serverSocket.emit('error', new Error('boom'));
+    await once(ws, 'close');
+    expect(errorSpy).toHaveBeenCalledWith('websocket client error:', 'boom');
+    errorSpy.mockRestore();
+  });
+
+  it('logs a failed broadcast send instead of dropping it silently', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    const ws = new WebSocket(url);
+    await nextMessage(ws); // initial snapshot
+    const [client] = hub['wss'].clients;
+    if (!client) throw new Error('no connected client');
+    const sendErr = new Error('send failed');
+    const originalSend = client.send.bind(client);
+    client.send = ((data: unknown, cb?: (err?: Error) => void) => {
+      if (typeof cb === 'function') cb(sendErr);
+      else originalSend(data as string);
+    }) as typeof client.send;
+
+    store.deckLoaded('B', { title: 'Live Update' });
+    await new Promise((r) => setTimeout(r, 20));
+    expect(errorSpy).toHaveBeenCalledWith('websocket broadcast send failed:', 'send failed');
+    ws.close();
+    errorSpy.mockRestore();
   });
 
   it('reports client connect/disconnect counts', async () => {
