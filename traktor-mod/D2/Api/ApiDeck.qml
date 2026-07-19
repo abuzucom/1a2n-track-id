@@ -96,7 +96,11 @@ Item {
     id: deckLoadedTimer
     interval: 250
 
-    onTriggered: sendDeckLoaded()
+    // is_loaded/is_loaded_signal also fire on the initial property binding
+    // and on eject, not just on a real load; only report an actual load.
+    onTriggered: {
+      if (propIsLoaded.value) sendDeckLoaded()
+    }
   }
   Timer {
     // Keep-alive: re-send loaded deck state so a server started after the
