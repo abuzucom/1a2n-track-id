@@ -129,7 +129,6 @@ interface HeroSlot {
   title: HTMLDivElement;
   artist: HTMLDivElement;
   stats: HTMLDivElement;
-  badge: HTMLDivElement;
   key: string;
 }
 
@@ -141,12 +140,13 @@ function buildHeroSlot(): HeroSlot {
   const title = el('div', 'title', meta);
   const artist = el('div', 'artist', meta);
   const stats = el('div', 'stats', row);
-  const badge = el('div', 'badge', row);
-  return { row, art, title, artist, stats, badge, key: '' };
+  const badge = el('div', 'badge onair', row);
+  badge.textContent = 'ON AIR';
+  return { row, art, title, artist, stats, key: '' };
 }
 const heroSlots = DECKS.map(buildHeroSlot);
 
-function fillHeroSlot(ui: HeroSlot, deck: Deck, isMaster: boolean): void {
+function fillHeroSlot(ui: HeroSlot, deck: Deck): void {
   if (!deck.track) return;
   const key = `${deck.track.artist} ${deck.track.title}`;
   if (key !== ui.key) {
@@ -160,23 +160,15 @@ function fillHeroSlot(ui: HeroSlot, deck: Deck, isMaster: boolean): void {
     void ui.row.offsetWidth;
   }
   ui.stats.textContent = statsText(deck.track);
-  ui.badge.textContent = isMaster ? 'ON AIR' : 'MIXING';
-  ui.badge.classList.toggle('onair', isMaster);
-  ui.badge.classList.toggle('mixing', !isMaster);
   ui.row.classList.add('visible');
 }
 
 function renderHeroes(snap: Snapshot): void {
-  const live = DECKS.filter((id) => {
-    const deck = snap.decks[id];
-    return deck.onAir && deck.isPlaying && deck.track;
-  });
-  const master = snap.masterClock.deck;
-  const masterId = master !== null && live.includes(master) ? master : live[0] ?? null;
   DECKS.forEach((id, i) => {
     const ui = heroSlots[i];
     if (!ui) return;
-    if (live.includes(id)) fillHeroSlot(ui, snap.decks[id], id === masterId);
+    const deck = snap.decks[id];
+    if (deck.onAir && deck.isPlaying && deck.track) fillHeroSlot(ui, deck);
     else ui.row.classList.remove('visible');
   });
 }
