@@ -9,6 +9,7 @@ import {
   resolveTheme,
   statsText,
   type Deck,
+  type Mixer,
   type Snapshot,
 } from './overlay-logic.js';
 
@@ -48,6 +49,24 @@ function el<K extends keyof HTMLElementTagNameMap>(
   node.className = className;
   parent.appendChild(node);
   return node;
+}
+
+/**
+ * Compact H/M/L EQ meter, floated left so it sits beside the title/artist
+ * text at the same height rather than its own banner row.
+ */
+function renderEqMeter(parent: HTMLElement, channel: Mixer['channels'][number] | undefined): void {
+  const eq = el('div', 'eq', parent);
+  for (const band of EQ_BANDS) {
+    const col = el('div', 'eq-col', eq);
+    const track = el('span', 'eq-track', col);
+    const fill = document.createElement('i');
+    track.appendChild(fill);
+    el('span', 'eq-label', col).textContent = band.charAt(0).toUpperCase();
+    const offset = eqOffsetPercent(channel ? channel.eq[band] : 0.5);
+    fill.style.height = `${Math.abs(offset) / 2}%`;
+    fill.style.bottom = offset >= 0 ? '50%' : `${50 - Math.abs(offset) / 2}%`;
+  }
 }
 
 /** Show or hide an <img> based on whether a track has cover art. */
@@ -125,17 +144,8 @@ const deckEls = DECKS.map((letter) => {
   keyLockTag.textContent = 'KEY LOCK';
   keyLockTag.style.display = 'none';
   const stats = el('div', 'stats', head);
-  const eqRow = el('div', 'eq', card);
-  const eqBars = EQ_BANDS.map((band) => {
-    const col = el('div', 'eq-col', eqRow);
-    const track = el('span', 'eq-track', col);
-    const fill = document.createElement('i');
-    track.appendChild(fill);
-    el('span', 'eq-label', col).textContent = band.charAt(0).toUpperCase();
-    return fill;
-  });
   const body = el('div', 'body', card);
-  return { card, stats, body, loopTag, keyLockTag, eqBars };
+  return { card, stats, body, loopTag, keyLockTag };
 });
 
 const historyBox = el('div', 'history card', root);
@@ -199,7 +209,13 @@ function renderHeroes(snap: Snapshot): void {
 // --- deck cards ------------------------------------------------------------------
 type DeckCardUi = (typeof deckEls)[number];
 
-function renderDeckCard(ui: DeckCardUi, deck: Deck, masterKey: string, onAirMaster: boolean): void {
+function renderDeckCard(
+  ui: DeckCardUi,
+  deck: Deck,
+  masterKey: string,
+  onAirMaster: boolean,
+  channel: Mixer['channels'][number] | undefined,
+): void {
   ui.card.classList.toggle('onair', deck.onAir);
   ui.card.classList.toggle('playing', deck.isPlaying);
   ui.card.classList.toggle('ending', isEnding(deck));
@@ -211,6 +227,7 @@ function renderDeckCard(ui: DeckCardUi, deck: Deck, masterKey: string, onAirMast
   ui.body.replaceChildren();
   if (deck.track) {
     ui.stats.textContent = statsText(deck.track);
+    renderEqMeter(ui.body, channel);
     if (deck.track.artUrl) {
       const art = el('img', 'art', ui.body);
       art.alt = '';
@@ -231,16 +248,7 @@ function renderDecks(snap: Snapshot): void {
     const deck = snap.decks[letter];
     const ui = deckEls[i];
     if (!ui) return;
-    renderDeckCard(ui, deck, masterKey, letter === masterId);
-    const channel = snap.mixer.channels[i];
-    if (channel) {
-      const values = EQ_BANDS.map((band) => channel.eq[band]);
-      ui.eqBars.forEach((fill, j) => {
-        const offset = eqOffsetPercent(values[j] ?? 0.5);
-        fill.style.height = `${Math.abs(offset) / 2}%`;
-        fill.style.bottom = offset >= 0 ? '50%' : `${50 - Math.abs(offset) / 2}%`;
-      });
-    }
+    renderDeckCard(ui, deck, masterKey, letter === masterId, snap.mixer.channels[i]);
   });
 }
 

@@ -158,8 +158,7 @@
   }
   .deck .artist { font-size: 12px; color: var(--concrete); white-space: nowrap; overflow: hidden; }
   .deck .empty { color: var(--dull-silver); font-family: var(--font-utility); font-size: 11px; }
-  /* flow-root contains the floated art thumbnail below (previously done by
-     the removed .vu meter's clear:both). */
+  /* flow-root contains the floated EQ meter and art thumbnail below. */
   .deck .body { display: flow-root; }
   .deck .art { float: left; width: 40px; height: 40px; border-radius: var(--radius); margin-right: 8px; object-fit: cover; background: var(--charcoal); }
   .deck .tag {
@@ -174,17 +173,17 @@
     display: none;
   }
   .deck.compatible .compat { display: block; }
-  /* EQ: its own row (not crammed into .head) so it reads at stream scale. */
+  /* EQ: compact meter floated left, at the same height as the title/artist
+     text beside it rather than its own banner row. */
   .deck .eq {
-    display: flex; gap: 16px; align-items: flex-end;
-    margin: 8px 0; padding: 6px 0;
-    border-top: 1px solid var(--charcoal); border-bottom: 1px solid var(--charcoal);
+    float: left; display: flex; gap: 4px; align-items: flex-end;
+    height: 36px; margin-right: 8px;
   }
-  .deck .eq-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .deck .eq-col { display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; }
   .deck .eq-track {
-    display: block; width: 10px; height: 28px;
+    display: block; width: 6px; flex: 1 1 auto; min-height: 0;
     background: var(--charcoal); position: relative; overflow: hidden;
-    border-radius: var(--radius);
+    border-radius: 1px;
   }
   .deck .eq-track::before {
     content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
@@ -198,8 +197,8 @@
   }
   .deck .eq-label {
     font-family: var(--font-utility); font-weight: 700;
-    font-size: 9px; letter-spacing: .08em;
-    color: var(--dull-silver);
+    font-size: 8px; letter-spacing: .04em; line-height: 1;
+    color: var(--dull-silver); flex: none;
   }
   /* history */
   .history {
