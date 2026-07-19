@@ -87,11 +87,11 @@
     font-size: 22px;
     text-transform: uppercase;
     letter-spacing: .01em;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden;
   }
   .hero .artist {
     font-weight: 500; font-size: 16px; color: var(--concrete);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden;
   }
   .hero .stats {
     margin-left: auto; flex: none;
@@ -111,6 +111,20 @@
     animation: pulse 2s ease-in-out infinite;
   }
   @keyframes pulse { 50% { opacity: .55; } }
+
+  /* Marquee: only applied (via the .marquee class) to titles/artists that
+     actually overflow their box; scrolls to reveal the rest, holds, then
+     snaps back. Pure CSS animation, no <marquee> and no rAF (OBS suspends
+     rAF in backgrounded browser sources). */
+  .title .marquee-text, .artist .marquee-text { display: inline-block; white-space: nowrap; }
+  .marquee .marquee-text {
+    animation: marquee-scroll 8s ease-in-out infinite;
+  }
+  @keyframes marquee-scroll {
+    0%, 10% { transform: translateX(0); }
+    45%, 55% { transform: translateX(var(--marquee-shift, 0px)); }
+    90%, 100% { transform: translateX(0); }
+  }
 
   /* deck grid: fixed 2x2, A B over C D, at every width */
   .decks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -140,9 +154,9 @@
   }
   .deck .title {
     font-weight: 500; font-size: 14px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden;
   }
-  .deck .artist { font-size: 12px; color: var(--concrete); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .deck .artist { font-size: 12px; color: var(--concrete); white-space: nowrap; overflow: hidden; }
   .deck .empty { color: var(--dull-silver); font-family: var(--font-utility); font-size: 11px; }
   /* flow-root contains the floated art thumbnail below (previously done by
      the removed .vu meter's clear:both). */

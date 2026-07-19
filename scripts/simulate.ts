@@ -15,8 +15,9 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 // tempo is Traktor's tempo_for_display, a multiplier around 1.0.
 const tracks = [
   { deck: 'A', ch: 1, title: 'Midnight Circuit', artist: 'Neon Vector', mix: '', bpm: 128, tempo: 1.0, resultingKey: '8A', trackLength: 75 },
-  { deck: 'B', ch: 2, title: 'Glasshouse', artist: 'Aria Flux', mix: 'Extended Mix', bpm: 126, tempo: 1.016, resultingKey: '9A', trackLength: 360 },
-  { deck: 'C', ch: 3, title: 'Deep End Theory', artist: 'Subsonic Youth', mix: 'Dub', bpm: 130, tempo: 0.985, resultingKey: '5A', trackLength: 360 },
+  // Deliberately long title/artist below exercise the overlay's marquee scroll.
+  { deck: 'B', ch: 2, title: 'Glasshouse (A Very Long Continuous Overflowing Radio Rework)', artist: 'Aria Flux', mix: 'Extended Mix', bpm: 126, tempo: 1.016, resultingKey: '9A', trackLength: 360 },
+  { deck: 'C', ch: 3, title: 'Deep End Theory', artist: 'Subsonic Youth And The Marquee Overflow Testing Collective', mix: 'Dub', bpm: 130, tempo: 0.985, resultingKey: '5A', trackLength: 360 },
   { deck: 'D', ch: 4, title: 'Afterimage', artist: 'Karst', mix: '', bpm: 132, tempo: 1.0, resultingKey: '11B', trackLength: 360 },
 ];
 

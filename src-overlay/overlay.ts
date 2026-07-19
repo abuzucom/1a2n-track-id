@@ -61,6 +61,28 @@ function setArtVisibility(img: HTMLImageElement, artUrl: string | undefined): vo
   }
 }
 
+/**
+ * Set text on a title/artist box, marquee-scrolling it via CSS animation if
+ * it overflows the box. No <marquee> and no rAF (OBS suspends rAF in
+ * backgrounded browser sources): the animation runs on the compositor and
+ * the overflow check is a one-time synchronous layout read.
+ */
+function setMarqueeText(container: HTMLElement, text: string): void {
+  container.textContent = '';
+  const span = document.createElement('span');
+  span.className = 'marquee-text';
+  span.textContent = text;
+  container.appendChild(span);
+  const overflow = span.scrollWidth - container.clientWidth;
+  if (overflow > 0) {
+    container.style.setProperty('--marquee-shift', `${-overflow}px`);
+    container.classList.add('marquee');
+  } else {
+    container.style.removeProperty('--marquee-shift');
+    container.classList.remove('marquee');
+  }
+}
+
 // --- view + theme ------------------------------------------------------------
 const params = new URLSearchParams(location.search);
 const view = params.get('view') ?? 'all';
@@ -151,8 +173,8 @@ function fillHeroSlot(ui: HeroSlot, deck: Deck): void {
   const key = `${deck.track.artist} ${deck.track.title}`;
   if (key !== ui.key) {
     ui.key = key;
-    ui.title.textContent = formatTitle(deck.track.title, deck.track.mix);
-    ui.artist.textContent = deck.track.artist || 'Unknown artist';
+    setMarqueeText(ui.title, formatTitle(deck.track.title, deck.track.mix));
+    setMarqueeText(ui.artist, deck.track.artist || 'Unknown artist');
     setArtVisibility(ui.art, deck.track.artUrl);
     // Restart the enter transition without rAF (rAF is throttled/suspended
     // in backgrounded OBS browser sources).
@@ -193,8 +215,8 @@ function renderDeckCard(ui: DeckCardUi, deck: Deck, masterKey: string, onAirMast
       art.alt = '';
       art.src = deck.track.artUrl;
     }
-    el('div', 'title', ui.body).textContent = formatTitle(deck.track.title, deck.track.mix);
-    el('div', 'artist', ui.body).textContent = deck.track.artist || 'Unknown artist';
+    setMarqueeText(el('div', 'title', ui.body), formatTitle(deck.track.title, deck.track.mix));
+    setMarqueeText(el('div', 'artist', ui.body), deck.track.artist || 'Unknown artist');
   } else {
     ui.stats.textContent = '';
     el('div', 'empty', ui.body).textContent = 'no track loaded';
