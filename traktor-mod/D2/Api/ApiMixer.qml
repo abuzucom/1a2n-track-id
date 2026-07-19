@@ -4,7 +4,8 @@ import "ApiClient.js" as ApiClient
 
 // Samples channel/master levels and crossfader at 10 Hz and sends one
 // /updateMixer frame per tick. Skips the send when nothing changed so an
-// idle mixer stays silent on the wire.
+// idle mixer stays silent on the wire, except for a 10s keep-alive that
+// forces a send so a server started after the last change still converges.
 Item {
   property string lastFrame: ""
 
@@ -23,26 +24,38 @@ Item {
     repeat: true
     running: true
 
-    onTriggered: {
-      var frame = {
-        channels: [
-          { level: propLevel1.value },
-          { level: propLevel2.value },
-          { level: propLevel3.value },
-          { level: propLevel4.value },
-        ],
-        xfader: propXfader.value,
-        master: {
-          left: propMasterLeft.value,
-          right: propMasterRight.value,
-          sum: propMasterSum.value,
-          clip: propMasterClip.value ? true : false,
-        },
-      }
-      var serialized = JSON.stringify(frame)
-      if (serialized === lastFrame) return
-      lastFrame = serialized
-      ApiClient.send("updateMixer", frame)
+    onTriggered: sendMixerFrame(false)
+  }
+
+  Timer {
+    // Keep-alive: re-send so a server started after the last change still
+    // converges (same pattern as ApiDeck/ApiChannel/ApiMasterClock).
+    interval: 10000
+    repeat: true
+    running: true
+
+    onTriggered: sendMixerFrame(true)
+  }
+
+  function sendMixerFrame(force) {
+    var frame = {
+      channels: [
+        { level: propLevel1.value },
+        { level: propLevel2.value },
+        { level: propLevel3.value },
+        { level: propLevel4.value },
+      ],
+      xfader: propXfader.value,
+      master: {
+        left: propMasterLeft.value,
+        right: propMasterRight.value,
+        sum: propMasterSum.value,
+        clip: propMasterClip.value ? true : false,
+      },
     }
+    var serialized = JSON.stringify(frame)
+    if (!force && serialized === lastFrame) return
+    lastFrame = serialized
+    ApiClient.send("updateMixer", frame)
   }
 }
