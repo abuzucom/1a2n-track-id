@@ -1,6 +1,7 @@
 node_modules/
 dist/
 public/overlay.js
+public/overlay.js.map
 public/fonts/
 .cache/
 history/

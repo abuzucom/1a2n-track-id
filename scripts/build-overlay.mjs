@@ -16,7 +16,11 @@ const FONT_SOURCES = {
 const fontsDir = join(rootDir, 'public', 'fonts');
 mkdirSync(fontsDir, { recursive: true });
 for (const [target, source] of Object.entries(FONT_SOURCES)) {
-  copyFileSync(join(rootDir, 'node_modules', source), join(fontsDir, target));
+  try {
+    copyFileSync(join(rootDir, 'node_modules', source), join(fontsDir, target));
+  } catch (err) {
+    throw new Error(`failed to copy font ${target} from ${source}: ${err.message}`, { cause: err });
+  }
 }
 console.log('brand fonts copied to public/fonts');
 
@@ -24,6 +28,7 @@ await build({
   entryPoints: [join(rootDir, 'src-overlay', 'overlay.ts')],
   bundle: true,
   minify: true,
+  sourcemap: true,
   target: 'es2022',
   outfile: join(rootDir, 'public', 'overlay.js'),
 });

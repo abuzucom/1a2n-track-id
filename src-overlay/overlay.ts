@@ -1,50 +1,43 @@
 // OBS browser-source overlay client. Renders deck/track state pushed over WebSocket.
 // All track metadata is untrusted: only ever assigned via textContent, never innerHTML.
-import { camelotCompatible, eqOffsetPercent, formatDeckBpm, formatTitle, isEnding } from './format.js';
+import { camelotCompatible, eqOffsetPercent, formatTitle, isEnding } from './format.js';
+import {
+  DECKS,
+  EQ_BANDS,
+  THEMES,
+  masterOnAirDeckId,
+  resolveTheme,
+  statsText,
+  type Deck,
+  type Snapshot,
+} from './overlay-logic.js';
 
-interface Track {
-  title: string;
-  artist: string;
-  mix: string;
-  bpm: number | null;
-  tempo: number | null;
-  resultingKey: string;
-  trackLength: number | null;
-  artUrl?: string;
-}
-
-interface Deck {
-  track: Track | null;
-  isPlaying: boolean;
-  isLooping: boolean;
-  isKeyLockOn: boolean;
-  onAir: boolean;
-  elapsedTime: number;
-}
-
-interface Mixer {
-  channels: { eq: { high: number; mid: number; low: number } }[];
-}
-
-interface HistoryEntry {
-  title: string;
-  artist: string;
-}
-
-type DeckId = 'A' | 'B' | 'C' | 'D';
-
-interface Snapshot {
-  decks: Record<DeckId, Deck>;
-  history: HistoryEntry[];
-  masterClock: { deck: DeckId | null; bpm: number | null };
-  mixer: Mixer;
-}
-
-const DECKS: readonly DeckId[] = ['A', 'B', 'C', 'D'];
-const THEMES = ['dark', 'paper', 'grey'] as const;
 const THEME_KEY = 'trackid-theme';
+const WS_RECONNECT_DELAY_MS = 2000;
+const HISTORY_DISPLAY_LIMIT = 10;
 
-const root = document.getElementById('overlay-root') as HTMLDivElement;
+function readStoredTheme(): string | null {
+  try {
+    return localStorage.getItem(THEME_KEY);
+  } catch (err) {
+    console.warn('theme storage unavailable, using default theme:', err);
+    return null;
+  }
+}
+
+function storeTheme(theme: string): void {
+  try {
+    localStorage.setItem(THEME_KEY, theme);
+  } catch (err) {
+    console.warn('theme storage unavailable, theme choice will not persist:', err);
+  }
+}
+
+const rootEl = document.getElementById('overlay-root');
+if (!(rootEl instanceof HTMLDivElement)) {
+  throw new Error('overlay-root element missing; overlay cannot render');
+}
+const root = rootEl;
 
 function el<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -57,27 +50,35 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+/** Show or hide an <img> based on whether a track has cover art. */
+function setArtVisibility(img: HTMLImageElement, artUrl: string | undefined): void {
+  if (artUrl) {
+    img.src = artUrl;
+    img.style.display = '';
+  } else {
+    img.removeAttribute('src');
+    img.style.display = 'none';
+  }
+}
+
 // --- view + theme ------------------------------------------------------------
 const params = new URLSearchParams(location.search);
 const view = params.get('view') ?? 'all';
 document.body.dataset.view = ['now', 'decks', 'history', 'all'].includes(view) ? view : 'all';
 
 function initTheme(): void {
-  const urlTheme = params.get('theme');
-  const saved = localStorage.getItem(THEME_KEY);
-  const isValid = (t: string | null): t is string =>
-    t !== null && [...THEMES, 'transparent'].includes(t);
-  document.body.dataset.theme = isValid(urlTheme) ? urlTheme : isValid(saved) ? saved : 'dark';
+  const theme = resolveTheme(params.get('theme'), readStoredTheme());
+  document.body.dataset.theme = theme;
 
   const toggle = document.createElement('button');
   toggle.id = 'theme-toggle';
-  toggle.textContent = document.body.dataset.theme;
+  toggle.textContent = document.body.dataset.theme ?? 'dark';
   toggle.addEventListener('click', () => {
     const current = document.body.dataset.theme ?? 'dark';
     const idx = (THEMES as readonly string[]).indexOf(current);
     const next = THEMES[(idx + 1) % THEMES.length] ?? 'dark';
     document.body.dataset.theme = next;
-    localStorage.setItem(THEME_KEY, next);
+    storeTheme(next);
     toggle.textContent = next;
   });
   document.body.appendChild(toggle);
@@ -103,7 +104,7 @@ const deckEls = DECKS.map((letter) => {
   keyLockTag.style.display = 'none';
   const stats = el('div', 'stats', head);
   const eq = el('div', 'eq', head);
-  const eqBars = (['high', 'mid', 'low'] as const).map(() => {
+  const eqBars = EQ_BANDS.map(() => {
     const track = document.createElement('span');
     const fill = document.createElement('i');
     track.appendChild(fill);
@@ -152,13 +153,7 @@ function fillHeroSlot(ui: HeroSlot, deck: Deck, isMaster: boolean): void {
     ui.key = key;
     ui.title.textContent = formatTitle(deck.track.title, deck.track.mix);
     ui.artist.textContent = deck.track.artist || 'Unknown artist';
-    if (deck.track.artUrl) {
-      ui.art.src = deck.track.artUrl;
-      ui.art.style.display = '';
-    } else {
-      ui.art.removeAttribute('src');
-      ui.art.style.display = 'none';
-    }
+    setArtVisibility(ui.art, deck.track.artUrl);
     // Restart the enter transition without rAF (rAF is throttled/suspended
     // in backgrounded OBS browser sources).
     ui.row.classList.remove('visible');
@@ -187,26 +182,7 @@ function renderHeroes(snap: Snapshot): void {
 }
 
 // --- deck cards ------------------------------------------------------------------
-function statsText(track: Track): string {
-  const parts: string[] = [];
-  const bpm = formatDeckBpm(track.bpm, track.tempo);
-  if (bpm) parts.push(bpm);
-  if (track.resultingKey) parts.push(track.resultingKey);
-  return parts.join(' | ');
-}
-
 type DeckCardUi = (typeof deckEls)[number];
-
-/** Id of the master on-air deck, falling back to the first live deck. */
-function masterOnAirDeckId(snap: Snapshot): DeckId | null {
-  const isLive = (id: DeckId) => {
-    const deck = snap.decks[id];
-    return deck.onAir && deck.isPlaying && deck.track !== null;
-  };
-  const master = snap.masterClock.deck;
-  if (master !== null && isLive(master)) return master;
-  return DECKS.find(isLive) ?? null;
-}
 
 function renderDeckCard(ui: DeckCardUi, deck: Deck, masterKey: string, onAirMaster: boolean): void {
   ui.card.classList.toggle('onair', deck.onAir);
@@ -243,7 +219,7 @@ function renderDecks(snap: Snapshot): void {
     renderDeckCard(ui, deck, masterKey, letter === masterId);
     const channel = snap.mixer.channels[i];
     if (channel) {
-      const values = [channel.eq.high, channel.eq.mid, channel.eq.low];
+      const values = EQ_BANDS.map((band) => channel.eq[band]);
       ui.eqBars.forEach((fill, j) => {
         const offset = eqOffsetPercent(values[j] ?? 0.5);
         fill.style.height = `${Math.abs(offset) / 2}%`;
@@ -260,7 +236,7 @@ function renderHistory(snap: Snapshot): void {
   if (snap.history.length === lastHistoryLen) return;
   lastHistoryLen = snap.history.length;
   historyList.replaceChildren();
-  for (const entry of snap.history.slice(-10)) {
+  for (const entry of snap.history.slice(-HISTORY_DISPLAY_LIMIT)) {
     const li = document.createElement('li');
     const artist = document.createElement('span');
     artist.className = 'h-artist';
@@ -291,7 +267,7 @@ function connect(): void {
     }
     if (msg.type === 'state') render(msg.state);
   };
-  ws.onclose = () => setTimeout(connect, 2000);
+  ws.onclose = () => setTimeout(connect, WS_RECONNECT_DELAY_MS);
   ws.onerror = () => ws.close();
 }
 connect();

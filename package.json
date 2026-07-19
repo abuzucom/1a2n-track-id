@@ -11,7 +11,8 @@
     "simulate": "tsx scripts/simulate.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.overlay.json --noEmit && tsc -p tsconfig.scripts.json --noEmit"
   },
   "dependencies": {
     "@fontsource/cousine": "5.2.7",

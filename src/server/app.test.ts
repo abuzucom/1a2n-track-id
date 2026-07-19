@@ -1,7 +1,21 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { buildApp, type App } from './app.js';
-import { TrackerStore } from '../state/store.js';
-import { CoverArtResolver } from '../covers/resolver.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
+type ReadFile = typeof import('node:fs/promises').readFile;
+let readFileOverride: ReadFile | null = null;
+
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...actual,
+    readFile: ((...args: Parameters<ReadFile>) =>
+      readFileOverride ? readFileOverride(...args) : actual.readFile(...args)) as ReadFile,
+  };
+});
+
+const { buildApp } = await import('./app.js');
+type App = ReturnType<typeof buildApp>;
+const { TrackerStore } = await import('../state/store.js');
+const { CoverArtResolver } = await import('../covers/resolver.js');
 
 describe('ingest routes', () => {
   let store: TrackerStore;
@@ -153,6 +167,39 @@ describe('ingest routes', () => {
     expect(
       (await app.inject({ method: 'POST', url: '/updateMixer', payload: '[1]', headers: { 'content-type': 'application/json' } })).statusCode,
     ).toBe(400);
+  });
+
+  it('logs unexpected static file read errors but still returns 404', async () => {
+    const err = Object.assign(new Error('permission denied'), { code: 'EACCES' });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    readFileOverride = async () => {
+      throw err;
+    };
+    try {
+      const res = await app.inject({ method: 'GET', url: '/overlay' });
+      expect(res.statusCode).toBe(404);
+      expect(res.json()).toEqual({ error: 'not built' });
+      expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining('static file read failed'), err);
+    } finally {
+      readFileOverride = null;
+      errorSpy.mockRestore();
+    }
+  });
+
+  it('does not log a missing-file (ENOENT) static read as an error', async () => {
+    const err = Object.assign(new Error('no such file'), { code: 'ENOENT' });
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+    readFileOverride = async () => {
+      throw err;
+    };
+    try {
+      const res = await app.inject({ method: 'GET', url: '/overlay' });
+      expect(res.statusCode).toBe(404);
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      readFileOverride = null;
+      errorSpy.mockRestore();
+    }
   });
 
   it('rejects non-object bodies', async () => {

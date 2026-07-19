@@ -36,10 +36,15 @@ export class WsHub extends EventEmitter<{ clients: [number] }> {
       console.error('websocket server error:', err.message);
     });
     this.wss.on('connection', (ws) => {
-      ws.send(this.message(store.snapshot()));
+      ws.send(this.message(store.snapshot()), (err) => {
+        if (err) console.error('websocket initial send failed:', err.message);
+      });
       this.emit('clients', this.clientCount);
       ws.on('close', () => this.emit('clients', this.clientCount));
-      ws.on('error', () => ws.close());
+      ws.on('error', (err) => {
+        console.error('websocket client error:', err.message);
+        ws.close();
+      });
     });
     this.onChange = (snap) => this.broadcast(snap);
     store.on('change', this.onChange);
@@ -59,7 +64,11 @@ export class WsHub extends EventEmitter<{ clients: [number] }> {
   private broadcast(snap: Snapshot): void {
     const msg = this.message(snap);
     for (const client of this.wss.clients) {
-      if (client.readyState === WebSocket.OPEN) client.send(msg);
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(msg, (err) => {
+          if (err) console.error('websocket broadcast send failed:', err.message);
+        });
+      }
     }
   }
 

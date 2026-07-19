@@ -1,7 +1,12 @@
 import { EventEmitter } from 'node:events';
+import { bool, clamp01, num, str } from './coerce.js';
 
 export type DeckId = 'A' | 'B' | 'C' | 'D';
 export const DECK_IDS: readonly DeckId[] = ['A', 'B', 'C', 'D'];
+
+export function isDeckId(v: string): v is DeckId {
+  return (DECK_IDS as readonly string[]).includes(v);
+}
 
 export interface TrackInfo {
   title: string;
@@ -107,14 +112,6 @@ interface StoreOptions {
   historyDebounceMs?: number;
   maxHistory?: number;
 }
-
-const str = (v: unknown): string => (typeof v === 'string' ? v : '');
-const num = (v: unknown): number | null => {
-  const n = typeof v === 'string' ? Number(v) : v;
-  return typeof n === 'number' && Number.isFinite(n) ? n : null;
-};
-const bool = (v: unknown): boolean => v === true || v === 'true' || v === 1;
-const clamp01 = (v: unknown): number => Math.min(1, Math.max(0, num(v) ?? 0));
 
 function emptyDeck(): DeckState {
   return {

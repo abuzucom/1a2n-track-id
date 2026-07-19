@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { DECK_IDS, toClientSnapshot, type DeckId, type TrackerStore } from '../state/store.js';
+import { isDeckId, toClientSnapshot, type TrackerStore } from '../state/store.js';
 import type { CoverArtResolver } from '../covers/resolver.js';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
@@ -29,10 +29,6 @@ export type App = FastifyInstance;
 export interface AppOptions {
   store: TrackerStore;
   resolver?: CoverArtResolver;
-}
-
-function isDeckId(v: string): v is DeckId {
-  return (DECK_IDS as readonly string[]).includes(v);
 }
 
 function asBody(v: unknown): Record<string, unknown> | null {
@@ -113,7 +109,10 @@ export function buildApp({ store, resolver }: AppOptions): App {
       try {
         const content = await readFile(join(PUBLIC_DIR, file));
         return reply.type(type).send(content);
-      } catch {
+      } catch (err) {
+        if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+          console.error(`static file read failed for ${file}:`, err);
+        }
         return reply.code(404).send({ error: 'not built' });
       }
     });
