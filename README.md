@@ -68,6 +68,8 @@ npm run dev        # dev server on port 8090 with reload (auto-exit disabled)
 npm run simulate   # fake deck data against the dev server, no Traktor needed
 npm test           # vitest
 npm run lint       # eslint
+npm run typecheck  # tsc, covers src/, src-overlay/, and scripts/
+npm run build      # production build (tsc + esbuild)
 ```
 
 Development runs on port 8090 (`http://127.0.0.1:8090/overlay`); the production launcher owns 8080. This keeps stale dev servers and simulated data away from the live overlay.
