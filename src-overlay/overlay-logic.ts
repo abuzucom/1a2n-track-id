@@ -18,6 +18,8 @@ export interface Track {
   bpm: number | null;
   tempo: number | null;
   resultingKey: string;
+  /** Traktor's Open Key notation (content.legacy_key), e.g. "7d". */
+  keyText: string;
   trackLength: number | null;
   artUrl?: string;
 }
@@ -58,12 +60,22 @@ export function masterOnAirDeckId(snap: Snapshot): DeckId | null {
   return DECKS.find(isLive) ?? null;
 }
 
-/** BPM and key summary line for a track, e.g. "128.0 BPM | 8A". */
+/** Open Key and Camelot key together, e.g. "7d / 8A". Falls back gracefully
+ * when only one is present. */
+export function keyLabel(track: Track): string {
+  const parts: string[] = [];
+  if (track.keyText) parts.push(track.keyText);
+  if (track.resultingKey) parts.push(track.resultingKey);
+  return parts.join(' / ');
+}
+
+/** BPM and key summary line for a track, e.g. "128.0 BPM | 7d / 8A". */
 export function statsText(track: Track): string {
   const parts: string[] = [];
   const bpm = formatDeckBpm(track.bpm, track.tempo);
   if (bpm) parts.push(bpm);
-  if (track.resultingKey) parts.push(track.resultingKey);
+  const key = keyLabel(track);
+  if (key) parts.push(key);
   return parts.join(' | ');
 }
 

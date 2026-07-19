@@ -2,6 +2,18 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.6.0] - 2026-07-19
+
+### Added
+
+- Open Key notation alongside the Camelot key on hero and deck stats (e.g. "7d / 8A"). Traktor's `content.legacy_key` was already captured server-side but never rendered.
+- Marquee-scroll for titles/artists that overflow their box: scrolls to reveal the rest, holds, and resets, instead of ellipsis-truncating. Pure CSS animation, no `<marquee>`.
+
+### Changed
+
+- Now-playing badges always read "ON AIR" and pulse; dropped the ON AIR (master) vs MIXING (other live decks) distinction, which didn't match a typical streaming workflow where anything shown is audible.
+- EQ display moved out of the crowded deck-card header to sit beside the title/artist text, enlarged, and labeled H/M/L per band.
+
 ## [0.5.0] - 2026-07-19
 
 ### Added

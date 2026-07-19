@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { masterOnAirDeckId, resolveTheme, statsText, type Deck, type Snapshot, type Track } from './overlay-logic.js';
+import {
+  keyLabel,
+  masterOnAirDeckId,
+  resolveTheme,
+  statsText,
+  type Deck,
+  type Snapshot,
+  type Track,
+} from './overlay-logic.js';
 
 function track(over: Partial<Track> = {}): Track {
   return {
@@ -9,6 +17,7 @@ function track(over: Partial<Track> = {}): Track {
     bpm: null,
     tempo: null,
     resultingKey: '',
+    keyText: '',
     trackLength: null,
     ...over,
   };
@@ -80,9 +89,26 @@ describe('masterOnAirDeckId', () => {
   });
 });
 
+describe('keyLabel', () => {
+  it('joins open key and camelot key with a separator', () => {
+    expect(keyLabel(track({ keyText: '7d', resultingKey: '8A' }))).toBe('7d / 8A');
+  });
+
+  it('falls back to whichever key is present', () => {
+    expect(keyLabel(track({ keyText: '', resultingKey: '8A' }))).toBe('8A');
+    expect(keyLabel(track({ keyText: '7d', resultingKey: '' }))).toBe('7d');
+  });
+
+  it('is empty when neither key is present', () => {
+    expect(keyLabel(track())).toBe('');
+  });
+});
+
 describe('statsText', () => {
   it('joins bpm and key with a separator', () => {
-    expect(statsText(track({ bpm: 128, tempo: 1, resultingKey: '8A' }))).toBe('128.0 BPM | 8A');
+    expect(statsText(track({ bpm: 128, tempo: 1, keyText: '7d', resultingKey: '8A' }))).toBe(
+      '128.0 BPM | 7d / 8A',
+    );
   });
 
   it('omits missing parts without a stray separator', () => {

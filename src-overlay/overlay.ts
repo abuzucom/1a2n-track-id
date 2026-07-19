@@ -9,6 +9,7 @@ import {
   resolveTheme,
   statsText,
   type Deck,
+  type Mixer,
   type Snapshot,
 } from './overlay-logic.js';
 
@@ -50,6 +51,24 @@ function el<K extends keyof HTMLElementTagNameMap>(
   return node;
 }
 
+/**
+ * Compact H/M/L EQ meter, floated left so it sits beside the title/artist
+ * text at the same height rather than its own banner row.
+ */
+function renderEqMeter(parent: HTMLElement, channel: Mixer['channels'][number] | undefined): void {
+  const eq = el('div', 'eq', parent);
+  for (const band of EQ_BANDS) {
+    const col = el('div', 'eq-col', eq);
+    const track = el('span', 'eq-track', col);
+    const fill = document.createElement('i');
+    track.appendChild(fill);
+    el('span', 'eq-label', col).textContent = band.charAt(0).toUpperCase();
+    const offset = eqOffsetPercent(channel ? channel.eq[band] : 0.5);
+    fill.style.height = `${Math.abs(offset) / 2}%`;
+    fill.style.bottom = offset >= 0 ? '50%' : `${50 - Math.abs(offset) / 2}%`;
+  }
+}
+
 /** Show or hide an <img> based on whether a track has cover art. */
 function setArtVisibility(img: HTMLImageElement, artUrl: string | undefined): void {
   if (artUrl) {
@@ -58,6 +77,28 @@ function setArtVisibility(img: HTMLImageElement, artUrl: string | undefined): vo
   } else {
     img.removeAttribute('src');
     img.style.display = 'none';
+  }
+}
+
+/**
+ * Set text on a title/artist box, marquee-scrolling it via CSS animation if
+ * it overflows the box. No <marquee> and no rAF (OBS suspends rAF in
+ * backgrounded browser sources): the animation runs on the compositor and
+ * the overflow check is a one-time synchronous layout read.
+ */
+function setMarqueeText(container: HTMLElement, text: string): void {
+  container.textContent = '';
+  const span = document.createElement('span');
+  span.className = 'marquee-text';
+  span.textContent = text;
+  container.appendChild(span);
+  const overflow = span.scrollWidth - container.clientWidth;
+  if (overflow > 0) {
+    container.style.setProperty('--marquee-shift', `${-overflow}px`);
+    container.classList.add('marquee');
+  } else {
+    container.style.removeProperty('--marquee-shift');
+    container.classList.remove('marquee');
   }
 }
 
@@ -103,16 +144,8 @@ const deckEls = DECKS.map((letter) => {
   keyLockTag.textContent = 'KEY LOCK';
   keyLockTag.style.display = 'none';
   const stats = el('div', 'stats', head);
-  const eq = el('div', 'eq', head);
-  const eqBars = EQ_BANDS.map(() => {
-    const track = document.createElement('span');
-    const fill = document.createElement('i');
-    track.appendChild(fill);
-    eq.appendChild(track);
-    return fill;
-  });
   const body = el('div', 'body', card);
-  return { card, stats, body, loopTag, keyLockTag, eqBars };
+  return { card, stats, body, loopTag, keyLockTag };
 });
 
 const historyBox = el('div', 'history card', root);
@@ -129,7 +162,6 @@ interface HeroSlot {
   title: HTMLDivElement;
   artist: HTMLDivElement;
   stats: HTMLDivElement;
-  badge: HTMLDivElement;
   key: string;
 }
 
@@ -141,18 +173,19 @@ function buildHeroSlot(): HeroSlot {
   const title = el('div', 'title', meta);
   const artist = el('div', 'artist', meta);
   const stats = el('div', 'stats', row);
-  const badge = el('div', 'badge', row);
-  return { row, art, title, artist, stats, badge, key: '' };
+  const badge = el('div', 'badge onair', row);
+  badge.textContent = 'ON AIR';
+  return { row, art, title, artist, stats, key: '' };
 }
 const heroSlots = DECKS.map(buildHeroSlot);
 
-function fillHeroSlot(ui: HeroSlot, deck: Deck, isMaster: boolean): void {
+function fillHeroSlot(ui: HeroSlot, deck: Deck): void {
   if (!deck.track) return;
   const key = `${deck.track.artist} ${deck.track.title}`;
   if (key !== ui.key) {
     ui.key = key;
-    ui.title.textContent = formatTitle(deck.track.title, deck.track.mix);
-    ui.artist.textContent = deck.track.artist || 'Unknown artist';
+    setMarqueeText(ui.title, formatTitle(deck.track.title, deck.track.mix));
+    setMarqueeText(ui.artist, deck.track.artist || 'Unknown artist');
     setArtVisibility(ui.art, deck.track.artUrl);
     // Restart the enter transition without rAF (rAF is throttled/suspended
     // in backgrounded OBS browser sources).
@@ -160,23 +193,15 @@ function fillHeroSlot(ui: HeroSlot, deck: Deck, isMaster: boolean): void {
     void ui.row.offsetWidth;
   }
   ui.stats.textContent = statsText(deck.track);
-  ui.badge.textContent = isMaster ? 'ON AIR' : 'MIXING';
-  ui.badge.classList.toggle('onair', isMaster);
-  ui.badge.classList.toggle('mixing', !isMaster);
   ui.row.classList.add('visible');
 }
 
 function renderHeroes(snap: Snapshot): void {
-  const live = DECKS.filter((id) => {
-    const deck = snap.decks[id];
-    return deck.onAir && deck.isPlaying && deck.track;
-  });
-  const master = snap.masterClock.deck;
-  const masterId = master !== null && live.includes(master) ? master : live[0] ?? null;
   DECKS.forEach((id, i) => {
     const ui = heroSlots[i];
     if (!ui) return;
-    if (live.includes(id)) fillHeroSlot(ui, snap.decks[id], id === masterId);
+    const deck = snap.decks[id];
+    if (deck.onAir && deck.isPlaying && deck.track) fillHeroSlot(ui, deck);
     else ui.row.classList.remove('visible');
   });
 }
@@ -184,7 +209,13 @@ function renderHeroes(snap: Snapshot): void {
 // --- deck cards ------------------------------------------------------------------
 type DeckCardUi = (typeof deckEls)[number];
 
-function renderDeckCard(ui: DeckCardUi, deck: Deck, masterKey: string, onAirMaster: boolean): void {
+function renderDeckCard(
+  ui: DeckCardUi,
+  deck: Deck,
+  masterKey: string,
+  onAirMaster: boolean,
+  channel: Mixer['channels'][number] | undefined,
+): void {
   ui.card.classList.toggle('onair', deck.onAir);
   ui.card.classList.toggle('playing', deck.isPlaying);
   ui.card.classList.toggle('ending', isEnding(deck));
@@ -196,13 +227,14 @@ function renderDeckCard(ui: DeckCardUi, deck: Deck, masterKey: string, onAirMast
   ui.body.replaceChildren();
   if (deck.track) {
     ui.stats.textContent = statsText(deck.track);
+    renderEqMeter(ui.body, channel);
     if (deck.track.artUrl) {
       const art = el('img', 'art', ui.body);
       art.alt = '';
       art.src = deck.track.artUrl;
     }
-    el('div', 'title', ui.body).textContent = formatTitle(deck.track.title, deck.track.mix);
-    el('div', 'artist', ui.body).textContent = deck.track.artist || 'Unknown artist';
+    setMarqueeText(el('div', 'title', ui.body), formatTitle(deck.track.title, deck.track.mix));
+    setMarqueeText(el('div', 'artist', ui.body), deck.track.artist || 'Unknown artist');
   } else {
     ui.stats.textContent = '';
     el('div', 'empty', ui.body).textContent = 'no track loaded';
@@ -216,16 +248,7 @@ function renderDecks(snap: Snapshot): void {
     const deck = snap.decks[letter];
     const ui = deckEls[i];
     if (!ui) return;
-    renderDeckCard(ui, deck, masterKey, letter === masterId);
-    const channel = snap.mixer.channels[i];
-    if (channel) {
-      const values = EQ_BANDS.map((band) => channel.eq[band]);
-      ui.eqBars.forEach((fill, j) => {
-        const offset = eqOffsetPercent(values[j] ?? 0.5);
-        fill.style.height = `${Math.abs(offset) / 2}%`;
-        fill.style.bottom = offset >= 0 ? '50%' : `${50 - Math.abs(offset) / 2}%`;
-      });
-    }
+    renderDeckCard(ui, deck, masterKey, letter === masterId, snap.mixer.channels[i]);
   });
 }
 

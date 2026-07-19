@@ -87,11 +87,11 @@
     font-size: 22px;
     text-transform: uppercase;
     letter-spacing: .01em;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden;
   }
   .hero .artist {
     font-weight: 500; font-size: 16px; color: var(--concrete);
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden;
   }
   .hero .stats {
     margin-left: auto; flex: none;
@@ -110,10 +110,21 @@
     color: var(--pitch); background: var(--paper);
     animation: pulse 2s ease-in-out infinite;
   }
-  .hero .badge.mixing {
-    color: var(--concrete); border: 1px solid var(--concrete);
-  }
   @keyframes pulse { 50% { opacity: .55; } }
+
+  /* Marquee: only applied (via the .marquee class) to titles/artists that
+     actually overflow their box; scrolls to reveal the rest, holds, then
+     snaps back. Pure CSS animation, no <marquee> and no rAF (OBS suspends
+     rAF in backgrounded browser sources). */
+  .title .marquee-text, .artist .marquee-text { display: inline-block; white-space: nowrap; }
+  .marquee .marquee-text {
+    animation: marquee-scroll 8s ease-in-out infinite;
+  }
+  @keyframes marquee-scroll {
+    0%, 10% { transform: translateX(0); }
+    45%, 55% { transform: translateX(var(--marquee-shift, 0px)); }
+    90%, 100% { transform: translateX(0); }
+  }
 
   /* deck grid: fixed 2x2, A B over C D, at every width */
   .decks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -143,12 +154,11 @@
   }
   .deck .title {
     font-weight: 500; font-size: 14px;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    white-space: nowrap; overflow: hidden;
   }
-  .deck .artist { font-size: 12px; color: var(--concrete); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .deck .artist { font-size: 12px; color: var(--concrete); white-space: nowrap; overflow: hidden; }
   .deck .empty { color: var(--dull-silver); font-family: var(--font-utility); font-size: 11px; }
-  /* flow-root contains the floated art thumbnail below (previously done by
-     the removed .vu meter's clear:both). */
+  /* flow-root contains the floated EQ meter and art thumbnail below. */
   .deck .body { display: flow-root; }
   .deck .art { float: left; width: 40px; height: 40px; border-radius: var(--radius); margin-right: 8px; object-fit: cover; background: var(--charcoal); }
   .deck .tag {
@@ -163,16 +173,32 @@
     display: none;
   }
   .deck.compatible .compat { display: block; }
-  .deck .eq { display: flex; gap: 3px; align-items: center; margin-left: 8px; }
-  .deck .eq span {
-    display: block; width: 4px; height: 14px;
-    background: var(--charcoal); position: relative; overflow: hidden;
+  /* EQ: compact meter floated left, at the same height as the title/artist
+     text beside it rather than its own banner row. */
+  .deck .eq {
+    float: left; display: flex; gap: 4px; align-items: flex-end;
+    height: 36px; margin-right: 8px;
   }
-  .deck .eq span i {
+  .deck .eq-col { display: flex; flex-direction: column; align-items: center; gap: 3px; height: 100%; }
+  .deck .eq-track {
+    display: block; width: 6px; flex: 1 1 auto; min-height: 0;
+    background: var(--charcoal); position: relative; overflow: hidden;
+    border-radius: 1px;
+  }
+  .deck .eq-track::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+    background: var(--dull-silver); opacity: .5;
+  }
+  .deck .eq-track i {
     position: absolute; left: 0; width: 100%;
     background: var(--concrete);
     bottom: 50%; height: 0;
     transition: height .15s ease, bottom .15s ease;
+  }
+  .deck .eq-label {
+    font-family: var(--font-utility); font-weight: 700;
+    font-size: 8px; letter-spacing: .04em; line-height: 1;
+    color: var(--dull-silver); flex: none;
   }
   /* history */
   .history {
