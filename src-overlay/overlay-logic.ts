@@ -1,6 +1,7 @@
 // Pure data/display logic for the overlay, kept free of DOM access so it can
 // be unit-tested directly (overlay.ts owns all rendering and browser APIs).
 import { formatDeckBpm } from './format.js';
+import { musicalKeyLabel } from './key-notation.js';
 
 export type DeckId = 'A' | 'B' | 'C' | 'D';
 export const DECKS: readonly DeckId[] = ['A', 'B', 'C', 'D'];
@@ -40,6 +41,7 @@ export interface Mixer {
 export interface HistoryEntry {
   title: string;
   artist: string;
+  mix: string;
 }
 
 export interface Snapshot {
@@ -60,11 +62,13 @@ export function masterOnAirDeckId(snap: Snapshot): DeckId | null {
   return DECKS.find(isLive) ?? null;
 }
 
-/** Open Key and Camelot key together, e.g. "7d / 8A". Falls back gracefully
- * when only one is present. */
+/** Open Key, standard musical key, and Camelot key together, e.g.
+ * "7d / F#maj / 2B". Omits whichever parts aren't available. */
 export function keyLabel(track: Track): string {
   const parts: string[] = [];
   if (track.keyText) parts.push(track.keyText);
+  const musical = musicalKeyLabel(track.keyText, track.resultingKey);
+  if (musical) parts.push(musical);
   if (track.resultingKey) parts.push(track.resultingKey);
   return parts.join(' / ');
 }

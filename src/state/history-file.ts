@@ -12,6 +12,7 @@ function sanitizeEntry(v: unknown): HistoryEntry | null {
     artist: str(raw.artist),
     album: str(raw.album),
     label: str(raw.label),
+    mix: str(raw.mix),
     filePath: str(raw.filePath),
     bpm: numStrict(raw.bpm),
     resultingKey: str(raw.resultingKey),

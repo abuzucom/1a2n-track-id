@@ -2,6 +2,22 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.7.0] - 2026-07-19
+
+### Added
+
+- Standard musical key (e.g. "F#m", "Cmaj") shown alongside Open Key and Camelot notation, e.g. "7d / F#maj / 2B".
+- Deck cards show elapsed/total track position ("0:33 / 12:47") below the artist.
+
+### Fixed
+
+- Deck cards no longer tear down and rebuild their whole body (art/title/artist/EQ) on every mixer update (up to 10 Hz); this was causing visible lag between turning an EQ knob and the overlay reflecting it. Art/title/artist/EQ are now persistent nodes updated in place, and the marquee's layout measurement only re-runs when the track actually changes.
+- BPM drops the decimal for a whole-number result (e.g. a synced deck landing on 140) instead of always showing one decimal place.
+
+### Changed
+
+- Track history now reads "Title (Mix) - Artist" instead of "Artist - Title", matching the deck-card title format.
+
 ## [0.6.0] - 2026-07-19
 
 ### Added

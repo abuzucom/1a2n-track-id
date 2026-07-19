@@ -90,13 +90,16 @@ describe('masterOnAirDeckId', () => {
 });
 
 describe('keyLabel', () => {
-  it('joins open key and camelot key with a separator', () => {
-    expect(keyLabel(track({ keyText: '7d', resultingKey: '8A' }))).toBe('7d / 8A');
+  it('joins open key, standard musical key, and camelot key', () => {
+    expect(keyLabel(track({ keyText: '1d', resultingKey: '8B' }))).toBe('1d / Cmaj / 8B');
   });
 
-  it('falls back to whichever key is present', () => {
-    expect(keyLabel(track({ keyText: '', resultingKey: '8A' }))).toBe('8A');
-    expect(keyLabel(track({ keyText: '7d', resultingKey: '' }))).toBe('7d');
+  it('derives the musical key from camelot when open key is missing', () => {
+    expect(keyLabel(track({ keyText: '', resultingKey: '8A' }))).toBe('Am / 8A');
+  });
+
+  it('omits the musical key when neither open key nor camelot is recognized', () => {
+    expect(keyLabel(track({ keyText: 'bogus', resultingKey: '' }))).toBe('bogus');
   });
 
   it('is empty when neither key is present', () => {
@@ -106,14 +109,14 @@ describe('keyLabel', () => {
 
 describe('statsText', () => {
   it('joins bpm and key with a separator', () => {
-    expect(statsText(track({ bpm: 128, tempo: 1, keyText: '7d', resultingKey: '8A' }))).toBe(
-      '128.0 BPM | 7d / 8A',
+    expect(statsText(track({ bpm: 128, tempo: 1, keyText: '1d', resultingKey: '8B' }))).toBe(
+      '128 BPM | 1d / Cmaj / 8B',
     );
   });
 
   it('omits missing parts without a stray separator', () => {
-    expect(statsText(track({ bpm: null, resultingKey: '8A' }))).toBe('8A');
-    expect(statsText(track({ bpm: 128, tempo: 1, resultingKey: '' }))).toBe('128.0 BPM');
+    expect(statsText(track({ bpm: null, resultingKey: '8A' }))).toBe('Am / 8A');
+    expect(statsText(track({ bpm: 128, tempo: 1, resultingKey: '' }))).toBe('128 BPM');
     expect(statsText(track())).toBe('');
   });
 });

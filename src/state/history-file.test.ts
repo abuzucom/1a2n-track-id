@@ -10,6 +10,7 @@ const entry = (title: string): HistoryEntry => ({
   artist: 'A',
   album: '',
   label: '',
+  mix: '',
   filePath: '',
   bpm: null,
   resultingKey: '',
