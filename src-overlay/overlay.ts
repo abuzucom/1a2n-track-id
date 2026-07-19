@@ -7,6 +7,7 @@ import {
   THEMES,
   masterOnAirDeckId,
   resolveTheme,
+  resolvedCamelotKey,
   statsText,
   type Deck,
   type Mixer,
@@ -246,7 +247,7 @@ function renderDeckCard(
   ui.loopTag.style.display = deck.isLooping ? '' : 'none';
   ui.keyLockTag.style.display = deck.isKeyLockOn ? '' : 'none';
   const compatible =
-    !onAirMaster && deck.track !== null && camelotCompatible(deck.track.resultingKey, masterKey);
+    !onAirMaster && deck.track !== null && camelotCompatible(resolvedCamelotKey(deck.track), masterKey);
   ui.card.classList.toggle('compatible', compatible);
   if (deck.track) {
     ui.stats.textContent = statsText(deck.track);
@@ -280,7 +281,8 @@ function renderDeckCard(
 
 function renderDecks(snap: Snapshot): void {
   const masterId = masterOnAirDeckId(snap);
-  const masterKey = masterId ? snap.decks[masterId].track?.resultingKey ?? '' : '';
+  const masterTrack = masterId ? snap.decks[masterId].track : null;
+  const masterKey = masterTrack ? resolvedCamelotKey(masterTrack) : '';
   DECKS.forEach((letter, i) => {
     const deck = snap.decks[letter];
     const ui = deckEls[i];

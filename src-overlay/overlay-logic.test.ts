@@ -3,6 +3,7 @@ import {
   keyLabel,
   masterOnAirDeckId,
   resolveTheme,
+  resolvedCamelotKey,
   statsText,
   type Deck,
   type Snapshot,
@@ -104,6 +105,32 @@ describe('keyLabel', () => {
 
   it('is empty when neither key is present', () => {
     expect(keyLabel(track())).toBe('');
+  });
+
+  it('derives Camelot from Open Key rather than trusting an unparseable resultingKey', () => {
+    // Traktor's resulting-key CSI property is not reliably Camelot-formatted
+    // in practice (e.g. a raw numeric value); Open Key is, so Camelot is
+    // derived from it instead of trusted directly from resultingKey.
+    expect(keyLabel(track({ keyText: '1d', resultingKey: '0.67' }))).toBe('1d / Cmaj / 8B');
+  });
+});
+
+describe('resolvedCamelotKey', () => {
+  it('derives Camelot from Open Key when recognized', () => {
+    expect(resolvedCamelotKey(track({ keyText: '1d', resultingKey: '' }))).toBe('8B');
+  });
+
+  it('prefers the Open Key derivation over an unparseable resultingKey', () => {
+    expect(resolvedCamelotKey(track({ keyText: '4m', resultingKey: '0.67' }))).toBe('11A');
+  });
+
+  it('falls back to resultingKey when Open Key is missing or unrecognized', () => {
+    expect(resolvedCamelotKey(track({ keyText: '', resultingKey: '8A' }))).toBe('8A');
+    expect(resolvedCamelotKey(track({ keyText: 'bogus', resultingKey: '8A' }))).toBe('8A');
+  });
+
+  it('is empty when neither is usable', () => {
+    expect(resolvedCamelotKey(track())).toBe('');
   });
 });
 

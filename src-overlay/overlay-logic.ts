@@ -1,7 +1,7 @@
 // Pure data/display logic for the overlay, kept free of DOM access so it can
 // be unit-tested directly (overlay.ts owns all rendering and browser APIs).
 import { formatDeckBpm } from './format.js';
-import { musicalKeyLabel } from './key-notation.js';
+import { camelotKeyLabel, musicalKeyLabel } from './key-notation.js';
 
 export type DeckId = 'A' | 'B' | 'C' | 'D';
 export const DECKS: readonly DeckId[] = ['A', 'B', 'C', 'D'];
@@ -62,6 +62,16 @@ export function masterOnAirDeckId(snap: Snapshot): DeckId | null {
   return DECKS.find(isLive) ?? null;
 }
 
+/**
+ * Camelot key for a track. Traktor's resulting-key CSI property is not
+ * reliably Camelot-formatted in practice, so Camelot is derived from Open
+ * Key (which is) whenever Open Key is recognized, falling back to
+ * resultingKey only when Open Key isn't available.
+ */
+export function resolvedCamelotKey(track: Track): string {
+  return camelotKeyLabel(track.keyText) || track.resultingKey;
+}
+
 /** Open Key, standard musical key, and Camelot key together, e.g.
  * "7d / F#maj / 2B". Omits whichever parts aren't available. */
 export function keyLabel(track: Track): string {
@@ -69,7 +79,8 @@ export function keyLabel(track: Track): string {
   if (track.keyText) parts.push(track.keyText);
   const musical = musicalKeyLabel(track.keyText, track.resultingKey);
   if (musical) parts.push(musical);
-  if (track.resultingKey) parts.push(track.resultingKey);
+  const camelot = resolvedCamelotKey(track);
+  if (camelot) parts.push(camelot);
   return parts.join(' / ');
 }
 

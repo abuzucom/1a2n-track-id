@@ -60,11 +60,61 @@ const CAMELOT_TO_MUSICAL: Readonly<Record<string, string>> = {
   '7A': 'Dm',
 };
 
+// Traktor's CSI payload has been observed with inconsistent case and
+// surrounding whitespace; normalize before every table lookup so those
+// don't silently miss.
+function normalizeOpenKey(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizeCamelot(value: string): string {
+  return value.trim().toUpperCase();
+}
+
 /**
  * Shortened standard musical key (e.g. "F#m", "Cmaj") for an Open Key
  * and/or Camelot value. Tries Open Key first, falls back to Camelot;
  * returns '' when neither is recognized.
  */
 export function musicalKeyLabel(openKey: string, camelot: string): string {
-  return OPEN_KEY_TO_MUSICAL[openKey] ?? CAMELOT_TO_MUSICAL[camelot] ?? '';
+  return (
+    OPEN_KEY_TO_MUSICAL[normalizeOpenKey(openKey)] ?? CAMELOT_TO_MUSICAL[normalizeCamelot(camelot)] ?? ''
+  );
+}
+
+const OPEN_KEY_TO_CAMELOT: Readonly<Record<string, string>> = {
+  '1d': '8B',
+  '1m': '8A',
+  '2d': '9B',
+  '2m': '9A',
+  '3d': '10B',
+  '3m': '10A',
+  '4d': '11B',
+  '4m': '11A',
+  '5d': '12B',
+  '5m': '12A',
+  '6d': '1B',
+  '6m': '1A',
+  '7d': '2B',
+  '7m': '2A',
+  '8d': '3B',
+  '8m': '3A',
+  '9d': '4B',
+  '9m': '4A',
+  '10d': '5B',
+  '10m': '5A',
+  '11d': '6B',
+  '11m': '6A',
+  '12d': '7B',
+  '12m': '7A',
+};
+
+/**
+ * Camelot key derived from Open Key notation, e.g. "1d" -> "8B". Traktor's
+ * resulting-key CSI property is not reliably Camelot-formatted in practice,
+ * so the overlay derives Camelot from Open Key (which is) instead of
+ * trusting it directly.
+ */
+export function camelotKeyLabel(openKey: string): string {
+  return OPEN_KEY_TO_CAMELOT[normalizeOpenKey(openKey)] ?? '';
 }

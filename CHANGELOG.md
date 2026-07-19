@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.7.2] - 2026-07-19
+
+### Fixed
+
+- Camelot key never appeared in stats or the compatible-key highlight: Traktor's `track.key.resulting.precise` CSI property is not reliably Camelot-formatted, so `resultingKey` was frequently unparseable. Camelot is now derived from Open Key notation (which is reliable) whenever Open Key is recognized, falling back to `resultingKey` only when it isn't.
+- Open Key and Camelot lookups now tolerate case and surrounding whitespace from the CSI payload instead of requiring an exact match, so a value like "1D" or " 1m " no longer silently fails to resolve a musical/Camelot key.
+
 ## [0.7.1] - 2026-07-19
 
 ### Fixed
