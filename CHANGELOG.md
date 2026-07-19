@@ -2,6 +2,17 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.7.1] - 2026-07-19
+
+### Fixed
+
+- EQ meters lagged while a knob was actively turning: the QML mod debounced EQ changes (waited for 250ms of quiet before sending), so the overlay only updated after you stopped turning the knob. Now polls at 100ms like the mixer frame, matching the level of live-ness the previous EQ rendering fix assumed but the QML side didn't actually provide.
+- Track position ("0:33 / 12:47") polled once a second, visibly stepping instead of tracking playback. Now polls at the same 100ms rate as the mixer/EQ frames.
+
+### Changed
+
+- Hero (now-playing) stats (BPM/key) moved below the artist name instead of sitting to the right of the title, giving the title more horizontal room before it needs to marquee-scroll.
+
 ## [0.7.0] - 2026-07-19
 
 ### Added

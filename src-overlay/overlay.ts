@@ -196,7 +196,7 @@ function buildHeroSlot(): HeroSlot {
   const meta = el('div', 'meta', row);
   const title = el('div', 'title', meta);
   const artist = el('div', 'artist', meta);
-  const stats = el('div', 'stats', row);
+  const stats = el('div', 'stats', meta);
   const badge = el('div', 'badge onair', row);
   badge.textContent = 'ON AIR';
   return { row, art, title, artist, stats, key: '' };
