@@ -53,20 +53,36 @@ function el<K extends keyof HTMLElementTagNameMap>(
 
 /**
  * Compact H/M/L EQ meter, floated left so it sits beside the title/artist
- * text at the same height rather than its own banner row.
+ * text at the same height rather than its own banner row. Bars are built
+ * once and updated by style write only (no node churn), since mixer
+ * frames arrive at up to 10 Hz.
  */
-function renderEqMeter(parent: HTMLElement, channel: Mixer['channels'][number] | undefined): void {
-  const eq = el('div', 'eq', parent);
-  for (const band of EQ_BANDS) {
-    const col = el('div', 'eq-col', eq);
+interface EqMeter {
+  container: HTMLDivElement;
+  fills: HTMLElement[];
+}
+
+function buildEqMeter(parent: HTMLElement): EqMeter {
+  const container = el('div', 'eq', parent);
+  const fills = EQ_BANDS.map((band) => {
+    const col = el('div', 'eq-col', container);
     const track = el('span', 'eq-track', col);
     const fill = document.createElement('i');
     track.appendChild(fill);
     el('span', 'eq-label', col).textContent = band.charAt(0).toUpperCase();
+    return fill;
+  });
+  return { container, fills };
+}
+
+function updateEqMeter(meter: EqMeter, channel: Mixer['channels'][number] | undefined): void {
+  EQ_BANDS.forEach((band, i) => {
+    const fill = meter.fills[i];
+    if (!fill) return;
     const offset = eqOffsetPercent(channel ? channel.eq[band] : 0.5);
     fill.style.height = `${Math.abs(offset) / 2}%`;
     fill.style.bottom = offset >= 0 ? '50%' : `${50 - Math.abs(offset) / 2}%`;
-  }
+  });
 }
 
 /** Show or hide an <img> based on whether a track has cover art. */
@@ -145,7 +161,14 @@ const deckEls = DECKS.map((letter) => {
   keyLockTag.style.display = 'none';
   const stats = el('div', 'stats', head);
   const body = el('div', 'body', card);
-  return { card, stats, body, loopTag, keyLockTag };
+  const eq = buildEqMeter(body);
+  const art = el('img', 'art', body);
+  art.alt = '';
+  const title = el('div', 'title', body);
+  const artist = el('div', 'artist', body);
+  const empty = el('div', 'empty', body);
+  empty.textContent = 'no track loaded';
+  return { card, stats, loopTag, keyLockTag, eq, art, title, artist, empty, trackKey: '' };
 });
 
 const historyBox = el('div', 'history card', root);
@@ -224,20 +247,30 @@ function renderDeckCard(
   const compatible =
     !onAirMaster && deck.track !== null && camelotCompatible(deck.track.resultingKey, masterKey);
   ui.card.classList.toggle('compatible', compatible);
-  ui.body.replaceChildren();
   if (deck.track) {
     ui.stats.textContent = statsText(deck.track);
-    renderEqMeter(ui.body, channel);
-    if (deck.track.artUrl) {
-      const art = el('img', 'art', ui.body);
-      art.alt = '';
-      art.src = deck.track.artUrl;
+    ui.eq.container.style.display = '';
+    updateEqMeter(ui.eq, channel);
+    setArtVisibility(ui.art, deck.track.artUrl);
+    // Mixer frames arrive at up to 10 Hz; only re-measure/scroll the
+    // marquee when the track itself changed, not on every EQ tick.
+    const key = `${deck.track.artist} ${deck.track.title}`;
+    if (key !== ui.trackKey) {
+      ui.trackKey = key;
+      setMarqueeText(ui.title, formatTitle(deck.track.title, deck.track.mix));
+      setMarqueeText(ui.artist, deck.track.artist || 'Unknown artist');
     }
-    setMarqueeText(el('div', 'title', ui.body), formatTitle(deck.track.title, deck.track.mix));
-    setMarqueeText(el('div', 'artist', ui.body), deck.track.artist || 'Unknown artist');
+    ui.title.style.display = '';
+    ui.artist.style.display = '';
+    ui.empty.style.display = 'none';
   } else {
     ui.stats.textContent = '';
-    el('div', 'empty', ui.body).textContent = 'no track loaded';
+    ui.trackKey = '';
+    ui.eq.container.style.display = 'none';
+    ui.art.style.display = 'none';
+    ui.title.style.display = 'none';
+    ui.artist.style.display = 'none';
+    ui.empty.style.display = '';
   }
 }
 
