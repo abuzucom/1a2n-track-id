@@ -2,6 +2,24 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.5.0] - 2026-07-19
+
+### Added
+
+- CI now runs typecheck, lint, test, and build on every push and PR (previously only a doc-sync/style check ran). New `npm run typecheck` script covers `src/`, `src-overlay/`, and `scripts/`.
+
+### Fixed
+
+- `ApiMixer.qml` had no keep-alive: unlike the deck/channel/master-clock emitters, an idle mixer never re-sent its state, so a server restarted mid-session never learned current EQ/level/crossfader values. It now force-resends every 10 s like the others.
+- The QML mod could report an empty deck as "loaded": `is_loaded`/`is_loaded_signal` also fire on the initial property binding and on eject, not just on a real load, so a deck with nothing in it sent blank title/artist. The overlay then showed "Unknown title / Unknown artist" instead of "no track loaded". The mod now only reports an actual load.
+- The static-file route's error handling and the WebSocket client-error/send paths silently discarded real errors. Failures are now logged; external behavior (status codes, payload shapes) is unchanged.
+
+### Changed
+
+- Overlay: pure rendering logic (master-deck selection, stats text, theme resolution, shared types) extracted into a new, unit-tested `overlay-logic.ts`. `localStorage` access is now guarded, falling back to the default theme instead of throwing when storage is unavailable (e.g. browser privacy modes); a missing overlay-root element now fails with a clear error instead of crashing deep in DOM code.
+- `src/state/store.ts` and `src/state/history-file.ts` now share one `src/state/coerce.ts` module for value coercion instead of two near-duplicate implementations.
+- The build script emits a source map for the overlay bundle and reports a clear error naming the missing file if a font source can't be copied, instead of a raw filesystem stack trace.
+
 ## [0.4.6] - 2026-07-18
 
 ### Fixed
