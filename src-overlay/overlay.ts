@@ -125,12 +125,13 @@ const deckEls = DECKS.map((letter) => {
   keyLockTag.textContent = 'KEY LOCK';
   keyLockTag.style.display = 'none';
   const stats = el('div', 'stats', head);
-  const eq = el('div', 'eq', head);
-  const eqBars = EQ_BANDS.map(() => {
-    const track = document.createElement('span');
+  const eqRow = el('div', 'eq', card);
+  const eqBars = EQ_BANDS.map((band) => {
+    const col = el('div', 'eq-col', eqRow);
+    const track = el('span', 'eq-track', col);
     const fill = document.createElement('i');
     track.appendChild(fill);
-    eq.appendChild(track);
+    el('span', 'eq-label', col).textContent = band.charAt(0).toUpperCase();
     return fill;
   });
   const body = el('div', 'body', card);

@@ -174,16 +174,32 @@
     display: none;
   }
   .deck.compatible .compat { display: block; }
-  .deck .eq { display: flex; gap: 3px; align-items: center; margin-left: 8px; }
-  .deck .eq span {
-    display: block; width: 4px; height: 14px;
-    background: var(--charcoal); position: relative; overflow: hidden;
+  /* EQ: its own row (not crammed into .head) so it reads at stream scale. */
+  .deck .eq {
+    display: flex; gap: 16px; align-items: flex-end;
+    margin: 8px 0; padding: 6px 0;
+    border-top: 1px solid var(--charcoal); border-bottom: 1px solid var(--charcoal);
   }
-  .deck .eq span i {
+  .deck .eq-col { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .deck .eq-track {
+    display: block; width: 10px; height: 28px;
+    background: var(--charcoal); position: relative; overflow: hidden;
+    border-radius: var(--radius);
+  }
+  .deck .eq-track::before {
+    content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 1px;
+    background: var(--dull-silver); opacity: .5;
+  }
+  .deck .eq-track i {
     position: absolute; left: 0; width: 100%;
     background: var(--concrete);
     bottom: 50%; height: 0;
     transition: height .15s ease, bottom .15s ease;
+  }
+  .deck .eq-label {
+    font-family: var(--font-utility); font-weight: 700;
+    font-size: 9px; letter-spacing: .08em;
+    color: var(--dull-silver);
   }
   /* history */
   .history {
