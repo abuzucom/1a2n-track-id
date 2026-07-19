@@ -1,6 +1,6 @@
 // OBS browser-source overlay client. Renders deck/track state pushed over WebSocket.
 // All track metadata is untrusted: only ever assigned via textContent, never innerHTML.
-import { camelotCompatible, eqOffsetPercent, formatTitle, isEnding } from './format.js';
+import { camelotCompatible, eqOffsetPercent, formatTitle, formatTrackPosition, isEnding } from './format.js';
 import {
   DECKS,
   EQ_BANDS,
@@ -166,9 +166,10 @@ const deckEls = DECKS.map((letter) => {
   art.alt = '';
   const title = el('div', 'title', body);
   const artist = el('div', 'artist', body);
+  const position = el('div', 'position', body);
   const empty = el('div', 'empty', body);
   empty.textContent = 'no track loaded';
-  return { card, stats, loopTag, keyLockTag, eq, art, title, artist, empty, trackKey: '' };
+  return { card, stats, loopTag, keyLockTag, eq, art, title, artist, position, empty, trackKey: '' };
 });
 
 const historyBox = el('div', 'history card', root);
@@ -262,6 +263,8 @@ function renderDeckCard(
     }
     ui.title.style.display = '';
     ui.artist.style.display = '';
+    ui.position.textContent = formatTrackPosition(deck.elapsedTime, deck.track.trackLength);
+    ui.position.style.display = '';
     ui.empty.style.display = 'none';
   } else {
     ui.stats.textContent = '';
@@ -270,6 +273,7 @@ function renderDeckCard(
     ui.art.style.display = 'none';
     ui.title.style.display = 'none';
     ui.artist.style.display = 'none';
+    ui.position.style.display = 'none';
     ui.empty.style.display = '';
   }
 }
@@ -294,11 +298,13 @@ function renderHistory(snap: Snapshot): void {
   historyList.replaceChildren();
   for (const entry of snap.history.slice(-HISTORY_DISPLAY_LIMIT)) {
     const li = document.createElement('li');
-    const artist = document.createElement('span');
-    artist.className = 'h-artist';
-    artist.textContent = entry.artist ? `${entry.artist} - ` : '';
-    li.appendChild(artist);
-    li.appendChild(document.createTextNode(entry.title || 'Unknown title'));
+    li.appendChild(document.createTextNode(formatTitle(entry.title, entry.mix)));
+    if (entry.artist) {
+      const artist = document.createElement('span');
+      artist.className = 'h-artist';
+      artist.textContent = ` - ${entry.artist}`;
+      li.appendChild(artist);
+    }
     historyList.appendChild(li);
   }
   historyBox.style.display = snap.history.length ? '' : 'none';

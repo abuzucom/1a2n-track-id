@@ -13,14 +13,14 @@ const post = (path: string, body: unknown) =>
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 // tempo is Traktor's tempo_for_display, a multiplier around 1.0.
-// keyText is Traktor's Open Key notation (content.legacy_key); the exact
-// wheel mapping vs. resultingKey's Camelot notation doesn't need to be
-// scientifically correct here, this is just placeholder simulator data.
+// keyText is Traktor's Open Key notation (content.legacy_key); paired here
+// with resultingKey's Camelot code per the real Open Key <-> Camelot wheel
+// (see key-notation.ts) so the derived musical key renders correctly.
 const tracks = [
-  { deck: 'A', ch: 1, title: 'Midnight Circuit', artist: 'Neon Vector', mix: '', bpm: 128, tempo: 1.0, resultingKey: '8A', keyText: '5m', trackLength: 75 },
+  { deck: 'A', ch: 1, title: 'Midnight Circuit', artist: 'Neon Vector', mix: '', bpm: 128, tempo: 1.0, resultingKey: '8A', keyText: '1m', trackLength: 75 },
   // Deliberately long title/artist below exercise the overlay's marquee scroll.
-  { deck: 'B', ch: 2, title: 'Glasshouse (A Very Long Continuous Overflowing Radio Rework)', artist: 'Aria Flux', mix: 'Extended Mix', bpm: 126, tempo: 1.016, resultingKey: '9A', keyText: '6m', trackLength: 360 },
-  { deck: 'C', ch: 3, title: 'Deep End Theory', artist: 'Subsonic Youth And The Marquee Overflow Testing Collective', mix: 'Dub', bpm: 130, tempo: 0.985, resultingKey: '5A', keyText: '2m', trackLength: 360 },
+  { deck: 'B', ch: 2, title: 'Glasshouse (A Very Long Continuous Overflowing Radio Rework)', artist: 'Aria Flux', mix: 'Extended Mix', bpm: 126, tempo: 1.016, resultingKey: '9A', keyText: '2m', trackLength: 360 },
+  { deck: 'C', ch: 3, title: 'Deep End Theory', artist: 'Subsonic Youth And The Marquee Overflow Testing Collective', mix: 'Dub', bpm: 130, tempo: 0.985, resultingKey: '5A', keyText: '10m', trackLength: 360 },
   { deck: 'D', ch: 4, title: 'Afterimage', artist: 'Karst', mix: '', bpm: 132, tempo: 1.0, resultingKey: '11B', keyText: '4d', trackLength: 360 },
 ];
 

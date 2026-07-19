@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { camelotCompatible, clamp01, eqOffsetPercent, formatDeckBpm, formatTitle, isEnding } from './format.js';
+import {
+  camelotCompatible,
+  clamp01,
+  eqOffsetPercent,
+  formatDeckBpm,
+  formatTitle,
+  formatTrackPosition,
+  isEnding,
+} from './format.js';
 
 describe('formatDeckBpm', () => {
   it('applies the tempo multiplier to the base bpm', () => {
@@ -7,17 +15,31 @@ describe('formatDeckBpm', () => {
   });
 
   it('uses base bpm alone when tempo is null', () => {
-    expect(formatDeckBpm(128, null)).toBe('128.0 BPM');
+    expect(formatDeckBpm(128, null)).toBe('128 BPM');
   });
 
   it('ignores tempo values outside the sane multiplier range', () => {
-    expect(formatDeckBpm(128, 128)).toBe('128.0 BPM');
-    expect(formatDeckBpm(128, 0.1)).toBe('128.0 BPM');
-    expect(formatDeckBpm(128, -1)).toBe('128.0 BPM');
+    expect(formatDeckBpm(128, 128)).toBe('128 BPM');
+    expect(formatDeckBpm(128, 0.1)).toBe('128 BPM');
+    expect(formatDeckBpm(128, -1)).toBe('128 BPM');
   });
 
   it('returns empty string without a base bpm', () => {
     expect(formatDeckBpm(null, 1.0)).toBe('');
+  });
+
+  it('drops the decimal for a whole-number result, e.g. a synced deck', () => {
+    expect(formatDeckBpm(140, 1.0)).toBe('140 BPM');
+    expect(formatDeckBpm(120, 1.0)).toBe('120 BPM');
+  });
+
+  it('keeps one decimal for a genuinely fractional bpm', () => {
+    expect(formatDeckBpm(128.4, 1.0)).toBe('128.4 BPM');
+  });
+
+  it('drops a decimal that only appears from floating-point noise', () => {
+    // 126 * (128 / 126) lands a hair off 128 in floating point.
+    expect(formatDeckBpm(126, 128 / 126)).toBe('128 BPM');
   });
 });
 
@@ -36,6 +58,24 @@ describe('formatTitle', () => {
 
   it('falls back for missing titles', () => {
     expect(formatTitle('', '')).toBe('Unknown title');
+  });
+});
+
+describe('formatTrackPosition', () => {
+  it('formats elapsed and total as minutes:seconds', () => {
+    expect(formatTrackPosition(33, 767)).toBe('0:33 / 12:47');
+  });
+
+  it('pads seconds under 10', () => {
+    expect(formatTrackPosition(65, 125)).toBe('1:05 / 2:05');
+  });
+
+  it('is empty without a known track length', () => {
+    expect(formatTrackPosition(33, null)).toBe('');
+  });
+
+  it('clamps negative elapsed time to zero', () => {
+    expect(formatTrackPosition(-5, 60)).toBe('0:00 / 1:00');
   });
 });
 

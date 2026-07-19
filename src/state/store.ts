@@ -60,6 +60,7 @@ export interface HistoryEntry {
   artist: string;
   album: string;
   label: string;
+  mix: string;
   filePath: string;
   bpm: number | null;
   resultingKey: string;
@@ -338,6 +339,7 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
       artist: d.track.artist,
       album: d.track.album,
       label: d.track.label,
+      mix: d.track.mix,
       filePath: d.track.filePath,
       bpm: d.track.bpm,
       resultingKey: d.track.resultingKey,
