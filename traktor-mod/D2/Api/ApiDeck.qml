@@ -186,7 +186,9 @@ Item {
     }
   }
   Timer {
-    interval: 1000
+    // Poll at the same rate as the mixer/EQ frames so the on-screen track
+    // position tracks playback instead of visibly stepping once a second.
+    interval: 100
     repeat: true
     running: propIsPlaying.value
 

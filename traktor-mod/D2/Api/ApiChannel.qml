@@ -6,13 +6,14 @@ Item {
   property int       index:            1
   property bool      isOnAirState:     null
   property real      onAirLevelState:  null
+  property bool      eqDirty:          false
 
   readonly property string    pathPrefix:  "app.traktor.mixer.channels." + index + "."
 
   AppProperty { id: propVolume;             path: pathPrefix + "volume";               onValueChanged: updateOnAirState() }
-  AppProperty { id: propEqHigh;             path: pathPrefix + "eq.high";              onValueChanged: eqChangedTimer.restart() }
-  AppProperty { id: propEqMid;              path: pathPrefix + "eq.mid";               onValueChanged: eqChangedTimer.restart() }
-  AppProperty { id: propEqLow;              path: pathPrefix + "eq.low";               onValueChanged: eqChangedTimer.restart() }
+  AppProperty { id: propEqHigh;             path: pathPrefix + "eq.high";              onValueChanged: eqDirty = true }
+  AppProperty { id: propEqMid;              path: pathPrefix + "eq.mid";               onValueChanged: eqDirty = true }
+  AppProperty { id: propEqLow;              path: pathPrefix + "eq.low";               onValueChanged: eqDirty = true }
   AppProperty { id: propXfaderAssignLeft;   path: pathPrefix + "xfader_assign.left";   onValueChanged: updateOnAirState() }
   AppProperty { id: propXfaderAssignRight;  path: pathPrefix + "xfader_assign.right";  onValueChanged: updateOnAirState() }
   AppProperty { id: propXfaderAdjust;       path: "app.traktor.mixer.xfader.adjust";   onValueChanged: updateOnAirState() }
@@ -36,10 +37,16 @@ Item {
     }
   }
   Timer {
-    id: eqChangedTimer
-    interval: 250
+    // EQ changes arrive continuously while a knob is turned. Poll instead
+    // of debouncing so the overlay updates live during the turn instead of
+    // waiting ~250ms after the knob stops moving.
+    interval: 100
+    repeat: true
+    running: true
 
     onTriggered: {
+      if (!eqDirty) return
+      eqDirty = false
       ApiClient.send("updateChannel/" + index, {
         eq: {
           high: propEqHigh.value,
