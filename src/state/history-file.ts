@@ -1,10 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
+import { numStrict, str } from './coerce.js';
 import type { HistoryEntry } from './store.js';
-
-const str = (v: unknown): string => (typeof v === 'string' ? v : '');
-const numOrNull = (v: unknown): number | null =>
-  typeof v === 'number' && Number.isFinite(v) ? v : null;
 
 /** Coerce one persisted entry to a valid shape; the file is not trusted input. */
 function sanitizeEntry(v: unknown): HistoryEntry | null {
@@ -16,7 +13,7 @@ function sanitizeEntry(v: unknown): HistoryEntry | null {
     album: str(raw.album),
     label: str(raw.label),
     filePath: str(raw.filePath),
-    bpm: numOrNull(raw.bpm),
+    bpm: numStrict(raw.bpm),
     resultingKey: str(raw.resultingKey),
     playedAt: str(raw.playedAt),
   };
