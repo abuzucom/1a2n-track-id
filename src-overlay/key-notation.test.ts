@@ -23,6 +23,13 @@ describe('musicalKeyLabel', () => {
     expect(musicalKeyLabel('bogus', 'nope')).toBe('');
   });
 
+  it('tolerates case and surrounding whitespace from the CSI payload', () => {
+    expect(musicalKeyLabel('1D', '')).toBe('Cmaj');
+    expect(musicalKeyLabel(' 1m ', '')).toBe('Am');
+    expect(musicalKeyLabel('', '8a')).toBe('Am');
+    expect(musicalKeyLabel('', ' 8B ')).toBe('Cmaj');
+  });
+
   it('covers every entry on the wheel consistently between Open Key and Camelot', () => {
     const pairs: [string, string, string][] = [
       ['1d', '8B', 'Cmaj'],
@@ -67,6 +74,11 @@ describe('camelotKeyLabel', () => {
   it('returns empty for missing or unrecognized Open Key values', () => {
     expect(camelotKeyLabel('')).toBe('');
     expect(camelotKeyLabel('bogus')).toBe('');
+  });
+
+  it('tolerates case and surrounding whitespace from the CSI payload', () => {
+    expect(camelotKeyLabel('1D')).toBe('8B');
+    expect(camelotKeyLabel(' 1m ')).toBe('8A');
   });
 
   it('covers every entry on the wheel', () => {

@@ -60,13 +60,26 @@ const CAMELOT_TO_MUSICAL: Readonly<Record<string, string>> = {
   '7A': 'Dm',
 };
 
+// Traktor's CSI payload has been observed with inconsistent case and
+// surrounding whitespace; normalize before every table lookup so those
+// don't silently miss.
+function normalizeOpenKey(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function normalizeCamelot(value: string): string {
+  return value.trim().toUpperCase();
+}
+
 /**
  * Shortened standard musical key (e.g. "F#m", "Cmaj") for an Open Key
  * and/or Camelot value. Tries Open Key first, falls back to Camelot;
  * returns '' when neither is recognized.
  */
 export function musicalKeyLabel(openKey: string, camelot: string): string {
-  return OPEN_KEY_TO_MUSICAL[openKey] ?? CAMELOT_TO_MUSICAL[camelot] ?? '';
+  return (
+    OPEN_KEY_TO_MUSICAL[normalizeOpenKey(openKey)] ?? CAMELOT_TO_MUSICAL[normalizeCamelot(camelot)] ?? ''
+  );
 }
 
 const OPEN_KEY_TO_CAMELOT: Readonly<Record<string, string>> = {
@@ -103,5 +116,5 @@ const OPEN_KEY_TO_CAMELOT: Readonly<Record<string, string>> = {
  * trusting it directly.
  */
 export function camelotKeyLabel(openKey: string): string {
-  return OPEN_KEY_TO_CAMELOT[openKey] ?? '';
+  return OPEN_KEY_TO_CAMELOT[normalizeOpenKey(openKey)] ?? '';
 }
