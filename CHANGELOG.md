@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.7.3] - 2026-07-21
+
+### Changed
+
+- Cousine utility text (stats, track position, empty-deck label) now renders at weight 700 instead of 400 for better legibility over busy video backgrounds.
+
 ## [0.7.2] - 2026-07-19
 
 ### Fixed
