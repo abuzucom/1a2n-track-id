@@ -60,6 +60,10 @@ const CAMELOT_TO_MUSICAL: Readonly<Record<string, string>> = {
   '7A': 'Dm',
 };
 
+const MUSICAL_TO_CAMELOT: Readonly<Record<string, string>> = Object.fromEntries(
+  Object.entries(CAMELOT_TO_MUSICAL).map(([camelot, musical]) => [musical.toLowerCase(), camelot]),
+);
+
 // Traktor's CSI payload has been observed with inconsistent case and
 // surrounding whitespace; normalize before every table lookup so those
 // don't silently miss.
@@ -71,15 +75,37 @@ function normalizeCamelot(value: string): string {
   return value.trim().toUpperCase();
 }
 
+function normalizeMusical(value: string): string {
+  return value.trim().toLowerCase();
+}
+
+function musicalKeyForValue(value: string): string {
+  const openKey = OPEN_KEY_TO_MUSICAL[normalizeOpenKey(value)];
+  if (openKey) return openKey;
+
+  const camelotKey = CAMELOT_TO_MUSICAL[normalizeCamelot(value)];
+  if (camelotKey) return camelotKey;
+
+  const musicalKey = normalizeMusical(value);
+  return MUSICAL_TO_CAMELOT[musicalKey] ? value.trim() : '';
+}
+
+function camelotKeyForValue(value: string): string {
+  const openKey = OPEN_KEY_TO_CAMELOT[normalizeOpenKey(value)];
+  if (openKey) return openKey;
+
+  const camelotKey = normalizeCamelot(value);
+  if (CAMELOT_TO_MUSICAL[camelotKey]) return camelotKey;
+
+  return MUSICAL_TO_CAMELOT[normalizeMusical(value)] ?? '';
+}
+
 /**
- * Shortened standard musical key (e.g. "F#m", "Cmaj") for an Open Key
- * and/or Camelot value. Tries Open Key first, falls back to Camelot;
- * returns '' when neither is recognized.
+ * Shortened standard musical key (e.g. "F#m", "Cmaj") for a Traktor,
+ * Open Key, Camelot, or standard musical value. Returns '' when none match.
  */
 export function musicalKeyLabel(openKey: string, camelot: string): string {
-  return (
-    OPEN_KEY_TO_MUSICAL[normalizeOpenKey(openKey)] ?? CAMELOT_TO_MUSICAL[normalizeCamelot(camelot)] ?? ''
-  );
+  return musicalKeyForValue(openKey) || musicalKeyForValue(camelot);
 }
 
 const OPEN_KEY_TO_CAMELOT: Readonly<Record<string, string>> = {
@@ -110,11 +136,9 @@ const OPEN_KEY_TO_CAMELOT: Readonly<Record<string, string>> = {
 };
 
 /**
- * Camelot key derived from Open Key notation, e.g. "1d" -> "8B". Traktor's
- * resulting-key CSI property is not reliably Camelot-formatted in practice,
- * so the overlay derives Camelot from Open Key (which is) instead of
- * trusting it directly.
+ * Camelot key for a Traktor, Open Key, Camelot, or standard musical value.
+ * For example, "11m" and "Gm" both resolve to "6A".
  */
 export function camelotKeyLabel(openKey: string): string {
-  return OPEN_KEY_TO_CAMELOT[normalizeOpenKey(openKey)] ?? '';
+  return camelotKeyForValue(openKey);
 }

@@ -14,6 +14,10 @@ describe('musicalKeyLabel', () => {
     expect(musicalKeyLabel('bogus', '11A')).toBe('F#m');
   });
 
+  it('recognizes a Traktor Open Key in the secondary value', () => {
+    expect(musicalKeyLabel('', '11m')).toBe('Gm');
+  });
+
   it('prefers Open Key over Camelot when both are given', () => {
     expect(musicalKeyLabel('1d', '9A')).toBe('Cmaj');
   });
@@ -79,6 +83,10 @@ describe('camelotKeyLabel', () => {
   it('tolerates case and surrounding whitespace from the CSI payload', () => {
     expect(camelotKeyLabel('1D')).toBe('8B');
     expect(camelotKeyLabel(' 1m ')).toBe('8A');
+  });
+
+  it('translates a standard musical key to Camelot', () => {
+    expect(camelotKeyLabel('Gm')).toBe('6A');
   });
 
   it('covers every entry on the wheel', () => {
