@@ -157,6 +157,9 @@ const deckEls = DECKS.map((letter) => {
   const loopTag = el('div', 'tag', head);
   loopTag.textContent = 'LOOP';
   loopTag.style.display = 'none';
+  const keyLockTag = el('div', 'tag', head);
+  keyLockTag.textContent = 'KEY LOCK';
+  keyLockTag.style.display = 'none';
   const stats = el('div', 'stats', head);
   const body = el('div', 'body', card);
   const eq = buildEqMeter(body);
@@ -167,7 +170,7 @@ const deckEls = DECKS.map((letter) => {
   const position = el('div', 'position', body);
   const empty = el('div', 'empty', body);
   empty.textContent = 'no track loaded';
-  return { card, stats, loopTag, eq, art, title, artist, position, empty, trackKey: '' };
+  return { card, stats, loopTag, keyLockTag, eq, art, title, artist, position, empty, trackKey: '' };
 });
 
 const historyBox = el('div', 'history card', root);
@@ -242,6 +245,7 @@ function renderDeckCard(
   ui.card.classList.toggle('playing', deck.isPlaying);
   ui.card.classList.toggle('ending', isEnding(deck));
   ui.loopTag.style.display = deck.isLooping ? '' : 'none';
+  ui.keyLockTag.style.display = deck.isKeyLockOn ? '' : 'none';
   const compatible =
     !onAirMaster && deck.track !== null && camelotCompatible(resolvedCamelotKey(deck.track), masterKey);
   ui.card.classList.toggle('compatible', compatible);

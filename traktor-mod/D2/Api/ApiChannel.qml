@@ -1,6 +1,6 @@
 import CSI 1.0
 import QtQuick 2.0
-import "TrackIdApiClient.js" as ApiClient
+import "ApiClient.js" as ApiClient
 
 Item {
   property int       index:            1
