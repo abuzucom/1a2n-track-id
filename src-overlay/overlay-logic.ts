@@ -62,25 +62,25 @@ export function masterOnAirDeckId(snap: Snapshot): DeckId | null {
   return DECKS.find(isLive) ?? null;
 }
 
-/**
- * Camelot key for a track. Traktor's resulting-key CSI property is not
- * reliably Camelot-formatted in practice, so Camelot is derived from Open
- * Key (which is) whenever Open Key is recognized, falling back to
- * resultingKey only when Open Key isn't available.
- */
+/** Return the Camelot value for the key currently heard from Traktor. */
 export function resolvedCamelotKey(track: Track): string {
-  return camelotKeyLabel(track.keyText) || track.resultingKey;
+  const resultingKey = track.resultingKey.trim();
+  if (resultingKey) return camelotKeyLabel(resultingKey) || resultingKey;
+  return camelotKeyLabel(track.keyText);
 }
 
-/** Open Key, standard musical key, and Camelot key together, e.g.
- * "7d / F#maj / 2B". Omits whichever parts aren't available. */
+/** Return the current Traktor key with musical and Camelot translations. */
 export function keyLabel(track: Track): string {
+  const sourceKey = track.resultingKey.trim() || track.keyText.trim();
   const parts: string[] = [];
-  if (track.keyText) parts.push(track.keyText);
-  const musical = musicalKeyLabel(track.keyText, track.resultingKey);
-  if (musical) parts.push(musical);
-  const camelot = resolvedCamelotKey(track);
-  if (camelot) parts.push(camelot);
+  const addPart = (value: string): void => {
+    const part = value.trim();
+    if (!part || parts.some((existing) => existing.toLowerCase() === part.toLowerCase())) return;
+    parts.push(part);
+  };
+  addPart(sourceKey);
+  addPart(musicalKeyLabel(sourceKey, sourceKey));
+  addPart(camelotKeyLabel(sourceKey));
   return parts.join(' / ');
 }
 

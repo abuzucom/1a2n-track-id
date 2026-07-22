@@ -3,10 +3,23 @@
 const BASE = process.env.TRACK_ID_URL ?? 'http://127.0.0.1:8090';
 
 // x-simulated marks this data so the server purges it when real data arrives.
+const tokenResponse = await fetch(`${BASE}/ingest-token`);
+if (!tokenResponse.ok) throw new Error(`could not get ingest token: ${tokenResponse.status}`);
+const tokenPayload = (await tokenResponse.json()) as { token?: unknown };
+if (typeof tokenPayload.token !== 'string' || tokenPayload.token.length === 0) {
+  throw new Error('ingest token response was invalid');
+}
+const ingestToken = tokenPayload.token;
+
 const post = (path: string, body: unknown) =>
   fetch(`${BASE}/${path}`, {
     method: 'POST',
-    headers: { 'content-type': 'application/json', 'x-simulated': '1' },
+    headers: {
+      authorization: `Bearer ${ingestToken}`,
+      'content-type': 'application/json',
+      'x-simulated': '1',
+      'x-track-id-client': 'TraktorClient',
+    },
     body: JSON.stringify(body),
   });
 

@@ -1,3 +1,4 @@
+import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,20 +30,112 @@ export type App = FastifyInstance;
 export interface AppOptions {
   store: TrackerStore;
   resolver?: CoverArtResolver;
+  ingestToken?: string;
+  allowedOrigins?: readonly string[];
+  requireIngestAuth?: boolean;
+}
+
+const TOKEN_BYTES = 32;
+const ALLOWED_METHODS = 'GET, POST, OPTIONS';
+const CLIENT_MARKER = 'TraktorClient';
+const ALLOWED_HEADERS = 'Authorization, Content-Type, X-Simulated, X-Track-Id-Client';
+const ALLOWED_REQUEST_HEADERS = new Set(ALLOWED_HEADERS.toLowerCase().split(', '));
+
+function createIngestToken(): string {
+  return randomBytes(TOKEN_BYTES).toString('hex');
+}
+
+function hasValidToken(header: string | undefined, expected: string): boolean {
+  const prefix = 'Bearer ';
+  if (!header || !header.startsWith(prefix)) return false;
+  const actual = Buffer.from(header.slice(prefix.length), 'utf8');
+  const wanted = Buffer.from(expected, 'utf8');
+  return actual.length === wanted.length && timingSafeEqual(actual, wanted);
+}
+
+function hasAllowedRequestOrigin(
+  origin: string | undefined,
+  referer: string | undefined,
+  allowedOrigins: ReadonlySet<string>,
+): boolean {
+  if (origin !== undefined) return allowedOrigins.has(origin);
+  if (referer === undefined) return true;
+  try {
+    return allowedOrigins.has(new URL(referer).origin);
+  } catch {
+    return false;
+  }
+}
+
+function requestedHeadersAreAllowed(value: string | undefined): boolean {
+  if (value === undefined || value.trim() === '') return true;
+  return value
+    .split(',')
+    .map((header) => header.trim().toLowerCase())
+    .every((header) => ALLOWED_REQUEST_HEADERS.has(header));
 }
 
 function asBody(v: unknown): Record<string, unknown> | null {
   return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
 }
 
-export function buildApp({ store, resolver }: AppOptions): App {
+export function buildApp({
+  store,
+  resolver,
+  ingestToken: configuredToken,
+  allowedOrigins: configuredOrigins,
+  requireIngestAuth: configuredRequireAuth,
+}: AppOptions): App {
   const app = Fastify({ logger: false });
+  const ingestToken = configuredToken ?? createIngestToken();
+  const allowedOrigins = new Set(configuredOrigins ?? []);
+  const requireIngestAuth = configuredRequireAuth ?? false;
+
+  app.addHook('onRequest', (req, reply, done) => {
+    const origin = req.headers.origin;
+    const isAllowed = hasAllowedRequestOrigin(origin, req.headers.referer, allowedOrigins);
+    if (!isAllowed) {
+      reply.code(403).send({ error: 'forbidden origin' });
+      return;
+    }
+
+    if (origin !== undefined) {
+      reply.header('access-control-allow-origin', origin);
+      reply.header('vary', 'Origin');
+    }
+
+    if (req.method === 'OPTIONS') {
+      if (
+        req.headers['access-control-request-method'] !== undefined &&
+        req.headers['access-control-request-method'] !== 'GET' &&
+        req.headers['access-control-request-method'] !== 'POST'
+      ) {
+        reply.code(403).send({ error: 'forbidden method' });
+        return;
+      }
+      if (!requestedHeadersAreAllowed(req.headers['access-control-request-headers'])) {
+        reply.code(403).send({ error: 'forbidden headers' });
+        return;
+      }
+      reply.header('access-control-allow-methods', ALLOWED_METHODS);
+      reply.header('access-control-allow-headers', ALLOWED_HEADERS);
+      reply.header('cache-control', 'no-store');
+      reply.code(204).send();
+      return;
+    }
+    done();
+  });
 
   // The simulator tags its payloads. Real (untagged) Traktor data purges any
   // simulated state first, so demo tracks can never linger into a live set.
   let hasSimulatedData = false;
-  app.addHook('preHandler', (req, _reply, done) => {
+  app.addHook('preHandler', (req, reply, done) => {
     if (req.method === 'POST') {
+      const hasClientMarker = req.headers['x-track-id-client'] === CLIENT_MARKER;
+      if (requireIngestAuth && (!hasClientMarker || !hasValidToken(req.headers.authorization, ingestToken))) {
+        reply.code(401).send({ error: 'unauthorized' });
+        return;
+      }
       if (req.headers['x-simulated'] === '1') {
         hasSimulatedData = true;
       } else if (hasSimulatedData) {
@@ -52,6 +145,14 @@ export function buildApp({ store, resolver }: AppOptions): App {
       }
     }
     done();
+  });
+
+  app.get('/ingest-token', async (req, reply) => {
+    if (requireIngestAuth && req.headers['x-track-id-client'] !== CLIENT_MARKER) {
+      return reply.code(403).send({ error: 'forbidden client' });
+    }
+    reply.header('cache-control', 'no-store');
+    return { token: ingestToken };
   });
 
   app.post<{ Params: { deck: string } }>('/deckLoaded/:deck', async (req, reply) => {

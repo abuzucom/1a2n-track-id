@@ -1,6 +1,6 @@
 import CSI 1.0
 import QtQuick 2.0
-import "ApiClient.js" as ApiClient
+import "TrackIdApiClient.js" as ApiClient
 
 // Samples channel/master levels and crossfader at 10 Hz and sends one
 // /updateMixer frame per tick. Skips the send when nothing changed so an

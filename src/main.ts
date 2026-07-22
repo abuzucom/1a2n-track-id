@@ -8,7 +8,8 @@ import { CoverArtResolver } from './covers/resolver.js';
 import { parseCliFlags } from './cli.js';
 import { formatListenError } from './server/listen-error.js';
 
-const { autoExit, resume, dev } = parseCliFlags(process.argv.slice(2));
+const { autoExit, resume, dev, requireAuth } = parseCliFlags(process.argv.slice(2));
+const requireIngestAuth = requireAuth ?? false;
 // Dev/simulator work uses 8090 so a leftover dev server can never collide
 // with, or serve stale data to, the production overlay on 8080.
 const DEFAULT_PORT = 8080;
@@ -48,7 +49,12 @@ store.on('change', (snap) => {
   }
 });
 
-const app = buildApp({ store, resolver });
+const app = buildApp({
+  store,
+  resolver,
+  allowedOrigins: [`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`],
+  requireIngestAuth,
+});
 const hub = attachWebSocket(app.server, store);
 
 const auto = new AutoShutdown({
@@ -87,5 +93,6 @@ console.log(`1a2n-track-id running:`);
 console.log(`  overlay:  http://${HOST}:${PORT}/overlay  (add as OBS browser source)`);
 console.log(`  views:    /overlay?view=now | decks | history | all`);
 console.log(`  ingest:   POST http://${HOST}:${PORT}/deckLoaded/<A-D> (Traktor QML mod)`);
+console.log(requireIngestAuth ? '  ingest auth required' : '  ingest auth optional for legacy clients');
 console.log(autoExit ? `  auto-exit ${graceMs / 1000}s after last client disconnects` : '  auto-exit disabled');
 console.log('waiting for Traktor deck data (each incoming post is logged here) ...');

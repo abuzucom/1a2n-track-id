@@ -91,12 +91,12 @@ describe('masterOnAirDeckId', () => {
 });
 
 describe('keyLabel', () => {
-  it('joins open key, standard musical key, and camelot key', () => {
-    expect(keyLabel(track({ keyText: '1d', resultingKey: '8B' }))).toBe('1d / Cmaj / 8B');
+  it('uses resulting key before translating it', () => {
+    expect(keyLabel(track({ keyText: '1d', resultingKey: '8B' }))).toBe('8B / Cmaj');
   });
 
   it('derives the musical key from camelot when open key is missing', () => {
-    expect(keyLabel(track({ keyText: '', resultingKey: '8A' }))).toBe('Am / 8A');
+    expect(keyLabel(track({ keyText: '', resultingKey: '8A' }))).toBe('8A / Am');
   });
 
   it('omits the musical key when neither open key nor camelot is recognized', () => {
@@ -107,11 +107,24 @@ describe('keyLabel', () => {
     expect(keyLabel(track())).toBe('');
   });
 
-  it('derives Camelot from Open Key rather than trusting an unparseable resultingKey', () => {
-    // Traktor's resulting-key CSI property is not reliably Camelot-formatted
-    // in practice (e.g. a raw numeric value); Open Key is, so Camelot is
-    // derived from it instead of trusted directly from resultingKey.
-    expect(keyLabel(track({ keyText: '1d', resultingKey: '0.67' }))).toBe('1d / Cmaj / 8B');
+  it('treats prototype property names as unknown keys', () => {
+    expect(keyLabel(track({ keyText: '__proto__' }))).toBe('__proto__');
+  });
+
+  it('uses an unparseable resultingKey without falling back to keyText', () => {
+    expect(keyLabel(track({ keyText: '1d', resultingKey: '0.67' }))).toBe('0.67');
+  });
+
+  it('translates a resulting Traktor Open Key when keyText is missing', () => {
+    expect(keyLabel(track({ resultingKey: '11m' }))).toBe('11m / Gm / 6A');
+  });
+
+  it('uses resultingKey instead of keyText when both are present', () => {
+    expect(keyLabel(track({ keyText: '10m', resultingKey: '11m' }))).toBe('11m / Gm / 6A');
+  });
+
+  it('does not fall back to keyText when resultingKey is unknown', () => {
+    expect(keyLabel(track({ keyText: '11m', resultingKey: '0.67' }))).toBe('0.67');
   });
 });
 
@@ -120,8 +133,8 @@ describe('resolvedCamelotKey', () => {
     expect(resolvedCamelotKey(track({ keyText: '1d', resultingKey: '' }))).toBe('8B');
   });
 
-  it('prefers the Open Key derivation over an unparseable resultingKey', () => {
-    expect(resolvedCamelotKey(track({ keyText: '4m', resultingKey: '0.67' }))).toBe('11A');
+  it('uses an unparseable resultingKey without falling back to keyText', () => {
+    expect(resolvedCamelotKey(track({ keyText: '4m', resultingKey: '0.67' }))).toBe('0.67');
   });
 
   it('falls back to resultingKey when Open Key is missing or unrecognized', () => {
@@ -137,12 +150,12 @@ describe('resolvedCamelotKey', () => {
 describe('statsText', () => {
   it('joins bpm and key with a separator', () => {
     expect(statsText(track({ bpm: 128, tempo: 1, keyText: '1d', resultingKey: '8B' }))).toBe(
-      '128 BPM | 1d / Cmaj / 8B',
+      '128 BPM | 8B / Cmaj',
     );
   });
 
   it('omits missing parts without a stray separator', () => {
-    expect(statsText(track({ bpm: null, resultingKey: '8A' }))).toBe('Am / 8A');
+    expect(statsText(track({ bpm: null, resultingKey: '8A' }))).toBe('8A / Am');
     expect(statsText(track({ bpm: 128, tempo: 1, resultingKey: '' }))).toBe('128 BPM');
     expect(statsText(track())).toBe('');
   });

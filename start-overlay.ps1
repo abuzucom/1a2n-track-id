@@ -111,8 +111,13 @@ function New-KillOnCloseJob {
     return $jobHandle
 }
 
-# Launch node directly (skip npm's extra cmd/node hops).
-$server = Start-Process node -ArgumentList 'dist\main.js' -PassThru -NoNewWindow
+# Launch node directly (skip npm's extra cmd/node hops). Set
+# TRACK_ID_REQUIRE_AUTH=1 before launching to require authenticated ingest.
+$serverArgs = @('dist\main.js')
+if ($env:TRACK_ID_REQUIRE_AUTH -eq '1') {
+    $serverArgs += '--require-auth'
+}
+$server = Start-Process node -ArgumentList $serverArgs -PassThru -NoNewWindow
 
 $job = New-KillOnCloseJob
 if ($job -ne [IntPtr]::Zero) {
