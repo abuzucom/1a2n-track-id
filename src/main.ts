@@ -48,7 +48,11 @@ store.on('change', (snap) => {
   }
 });
 
-const app = buildApp({ store, resolver });
+const app = buildApp({
+  store,
+  resolver,
+  allowedOrigins: [`http://127.0.0.1:${PORT}`, `http://localhost:${PORT}`],
+});
 const hub = attachWebSocket(app.server, store);
 
 const auto = new AutoShutdown({

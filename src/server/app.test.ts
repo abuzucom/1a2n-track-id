@@ -22,11 +22,21 @@ describe('ingest routes', () => {
   let app: App;
 
   let resolver: CoverArtResolver;
+  const INGEST_TOKEN = 'test-ingest-token';
+  const allowedOrigin = 'http://127.0.0.1:8080';
+
+  const post = (url: string, payload: unknown, headers: Record<string, string> = {}) =>
+    app.inject({
+      method: 'POST',
+      url,
+      payload,
+      headers: { authorization: `Bearer ${INGEST_TOKEN}`, ...headers },
+    });
 
   beforeEach(async () => {
     store = new TrackerStore({ historyDebounceMs: 0 });
     resolver = new CoverArtResolver();
-    app = buildApp({ store, resolver });
+    app = buildApp({ store, resolver, ingestToken: INGEST_TOKEN, allowedOrigins: [allowedOrigin] });
     await app.ready();
   });
   afterEach(async () => {
@@ -35,11 +45,7 @@ describe('ingest routes', () => {
   });
 
   it('accepts deckLoaded and exposes it via /state', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/deckLoaded/A',
-      payload: { title: 'Test Track', artist: 'Tester', bpm: 130 },
-    });
+    const res = await post('/deckLoaded/A', { title: 'Test Track', artist: 'Tester', bpm: 130 });
     expect(res.statusCode).toBe(200);
 
     const state = await app.inject({ method: 'GET', url: '/state' });
@@ -49,17 +55,67 @@ describe('ingest routes', () => {
     expect(body.decks.A.track.bpm).toBe(130);
   });
 
+  it('requires the bearer token on ingest routes', async () => {
+    const token = await app.inject({ method: 'GET', url: '/ingest-token' });
+    expect(token.statusCode).toBe(200);
+    expect(token.json()).toEqual({ token: INGEST_TOKEN });
+    expect(token.headers['cache-control']).toBe('no-store');
+
+    const missing = await app.inject({ method: 'POST', url: '/deckLoaded/A', payload: { title: 'Blocked' } });
+    expect(missing.statusCode).toBe(401);
+    const wrong = await app.inject({
+      method: 'POST',
+      url: '/deckLoaded/A',
+      payload: { title: 'Blocked' },
+      headers: { authorization: 'Bearer wrong-token' },
+    });
+    expect(wrong.statusCode).toBe(401);
+    expect((await app.inject({ method: 'GET', url: '/state' })).json().decks.A.track).toBeNull();
+  });
+
+  it('rejects foreign origins and allows the configured local origin', async () => {
+    const foreign = await app.inject({
+      method: 'POST',
+      url: '/deckLoaded/A',
+      payload: { title: 'Blocked' },
+      headers: { authorization: `Bearer ${INGEST_TOKEN}`, origin: 'https://attacker.example' },
+    });
+    expect(foreign.statusCode).toBe(403);
+
+    const local = await post('/deckLoaded/A', { title: 'Allowed' }, { origin: allowedOrigin });
+    expect(local.statusCode).toBe(200);
+    expect(local.headers['access-control-allow-origin']).toBe(allowedOrigin);
+  });
+
+  it('handles only allowed CORS preflights', async () => {
+    const allowed = await app.inject({
+      method: 'OPTIONS',
+      url: '/updateDeck/A',
+      headers: {
+        origin: allowedOrigin,
+        'access-control-request-method': 'POST',
+        'access-control-request-headers': 'authorization, content-type',
+      },
+    });
+    expect(allowed.statusCode).toBe(204);
+    expect(allowed.headers['access-control-allow-methods']).toBe('GET, POST, OPTIONS');
+
+    const foreign = await app.inject({
+      method: 'OPTIONS',
+      url: '/updateDeck/A',
+      headers: {
+        origin: 'https://attacker.example',
+        'access-control-request-method': 'POST',
+      },
+    });
+    expect(foreign.statusCode).toBe(403);
+  });
+
   it('accepts updateDeck, updateChannel, updateMasterClock', async () => {
-    await app.inject({ method: 'POST', url: '/deckLoaded/C', payload: { title: 'X' } });
-    expect(
-      (await app.inject({ method: 'POST', url: '/updateDeck/C', payload: { isPlaying: true } })).statusCode,
-    ).toBe(200);
-    expect(
-      (await app.inject({ method: 'POST', url: '/updateChannel/3', payload: { isOnAir: true } })).statusCode,
-    ).toBe(200);
-    expect(
-      (await app.inject({ method: 'POST', url: '/updateMasterClock', payload: { deck: 'C', bpm: 174 } })).statusCode,
-    ).toBe(200);
+    await post('/deckLoaded/C', { title: 'X' });
+    expect((await post('/updateDeck/C', { isPlaying: true })).statusCode).toBe(200);
+    expect((await post('/updateChannel/3', { isOnAir: true })).statusCode).toBe(200);
+    expect((await post('/updateMasterClock', { deck: 'C', bpm: 174 })).statusCode).toBe(200);
 
     const body = (await app.inject({ method: 'GET', url: '/state' })).json();
     expect(body.decks.C.isPlaying).toBe(true);
@@ -68,18 +124,14 @@ describe('ingest routes', () => {
   });
 
   it('rejects bad deck letters and channel indexes', async () => {
-    expect((await app.inject({ method: 'POST', url: '/deckLoaded/Z', payload: {} })).statusCode).toBe(400);
-    expect((await app.inject({ method: 'POST', url: '/updateDeck/AB', payload: {} })).statusCode).toBe(400);
-    expect((await app.inject({ method: 'POST', url: '/updateChannel/9', payload: {} })).statusCode).toBe(400);
-    expect((await app.inject({ method: 'POST', url: '/updateChannel/x', payload: {} })).statusCode).toBe(400);
+    expect((await post('/deckLoaded/Z', {})).statusCode).toBe(400);
+    expect((await post('/updateDeck/AB', {})).statusCode).toBe(400);
+    expect((await post('/updateChannel/9', {})).statusCode).toBe(400);
+    expect((await post('/updateChannel/x', {})).statusCode).toBe(400);
   });
 
   it('never exposes filePath via /state', async () => {
-    await app.inject({
-      method: 'POST',
-      url: '/deckLoaded/A',
-      payload: { title: 'Secret', filePath: 'C:\\Users\\jonathan\\Music\\secret.mp3' },
-    });
+    await post('/deckLoaded/A', { title: 'Secret', filePath: 'C:\\Users\\jonathan\\Music\\secret.mp3' });
     const body = (await app.inject({ method: 'GET', url: '/state' })).body;
     expect(body).toContain('Secret');
     expect(body).not.toContain('filePath');
@@ -127,15 +179,15 @@ describe('ingest routes', () => {
   });
 
   it('wipes simulated data as soon as real payloads arrive', async () => {
-    const sim = { headers: { 'x-simulated': '1' } };
-    await app.inject({ method: 'POST', url: '/deckLoaded/A', payload: { title: 'FakeA' }, ...sim });
-    await app.inject({ method: 'POST', url: '/updateChannel/1', payload: { isOnAir: true }, ...sim });
-    await app.inject({ method: 'POST', url: '/updateDeck/A', payload: { isPlaying: true }, ...sim });
-    await app.inject({ method: 'POST', url: '/updateMasterClock', payload: { deck: 'A', bpm: 120 }, ...sim });
+    const sim = { 'x-simulated': '1' };
+    await post('/deckLoaded/A', { title: 'FakeA' }, sim);
+    await post('/updateChannel/1', { isOnAir: true }, sim);
+    await post('/updateDeck/A', { isPlaying: true }, sim);
+    await post('/updateMasterClock', { deck: 'A', bpm: 120 }, sim);
     expect((await app.inject({ method: 'GET', url: '/state' })).json().decks.A.track.title).toBe('FakeA');
 
     // First real (untagged) payload resets decks, history, and master clock.
-    await app.inject({ method: 'POST', url: '/deckLoaded/B', payload: { title: 'RealB' } });
+    await post('/deckLoaded/B', { title: 'RealB' });
     const state = (await app.inject({ method: 'GET', url: '/state' })).json();
     expect(state.decks.A.track).toBeNull();
     expect(state.decks.B.track.title).toBe('RealB');
@@ -144,18 +196,18 @@ describe('ingest routes', () => {
   });
 
   it('keeps real data intact when more real payloads arrive', async () => {
-    await app.inject({ method: 'POST', url: '/deckLoaded/A', payload: { title: 'RealA' } });
-    await app.inject({ method: 'POST', url: '/deckLoaded/B', payload: { title: 'RealB' } });
+    await post('/deckLoaded/A', { title: 'RealA' });
+    await post('/deckLoaded/B', { title: 'RealB' });
     const state = (await app.inject({ method: 'GET', url: '/state' })).json();
     expect(state.decks.A.track.title).toBe('RealA');
     expect(state.decks.B.track.title).toBe('RealB');
   });
 
   it('accepts mixer frames and exposes them via /state', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/updateMixer',
-      payload: { channels: [{ level: 0.3 }], xfader: 0.8, master: { sum: 0.4 } },
+    const res = await post('/updateMixer', {
+      channels: [{ level: 0.3 }],
+      xfader: 0.8,
+      master: { sum: 0.4 },
     });
     expect(res.statusCode).toBe(200);
     const body = (await app.inject({ method: 'GET', url: '/state' })).json();
@@ -164,9 +216,7 @@ describe('ingest routes', () => {
   });
 
   it('rejects bad mixer bodies', async () => {
-    expect(
-      (await app.inject({ method: 'POST', url: '/updateMixer', payload: '[1]', headers: { 'content-type': 'application/json' } })).statusCode,
-    ).toBe(400);
+    expect((await post('/updateMixer', '[1]', { 'content-type': 'application/json' })).statusCode).toBe(400);
   });
 
   it('logs unexpected static file read errors but still returns 404', async () => {
@@ -203,12 +253,7 @@ describe('ingest routes', () => {
   });
 
   it('rejects non-object bodies', async () => {
-    const res = await app.inject({
-      method: 'POST',
-      url: '/deckLoaded/A',
-      payload: '[1,2,3]',
-      headers: { 'content-type': 'application/json' },
-    });
+    const res = await post('/deckLoaded/A', '[1,2,3]', { 'content-type': 'application/json' });
     expect(res.statusCode).toBe(400);
   });
 });

@@ -12,7 +12,7 @@ Everything runs on your machine; nothing leaves `127.0.0.1`.
 
 ### 1. Install the Traktor QML mod (one time)
 
-The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/traktor-api-client), MIT) makes Traktor push deck state to `http://localhost:8080`.
+The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/traktor-api-client), MIT) makes Traktor push authenticated deck state to `http://localhost:8080`.
 
 1. Close Traktor.
 2. Open PowerShell **as Administrator** and run:
@@ -23,6 +23,8 @@ The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/trakto
 3. Start Traktor Pro 4. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. No hardware is needed; the "virtual" D2 mapping is what runs the mod.
 
 > **After a Traktor update:** NI updates can overwrite the mod. Just run `install.ps1` again.
+
+> **After an app update:** Re-run `install.ps1` when the QML mod changes. The mod obtains a per-launch ingest token automatically; no token configuration is needed.
 
 ### 2. Start the overlay server
 
@@ -50,6 +52,7 @@ Themes: the page ground defaults to dark (Pitch). The top-right toggle cycles da
 ## Privacy
 
 The server binds to `127.0.0.1` only. WebSocket connections from non-local web origins are rejected, and client-facing state never includes local file paths. Fonts are self-hosted; the overlay makes no external requests.
+Data-mutating ingest requests require the per-launch bearer token used by the QML mod. Foreign browser origins are rejected before they reach the ingest handlers.
 
 ## How it decides what's "on air"
 

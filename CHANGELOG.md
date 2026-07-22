@@ -8,6 +8,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 - Hidden the KEY LOCK badge from deck cards while preserving its state in the API.
 - Resulting Traktor keys now show musical and Camelot translations and take precedence over loaded keys.
+- Authenticated Traktor ingest requests with a per-launch token and rejected foreign browser origins.
 
 ## [0.7.3] - 2026-07-21
 
