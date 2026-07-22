@@ -2,14 +2,6 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
-## [Unreleased]
-
-### Changed
-
-- Hidden the KEY LOCK badge from deck cards while preserving its state in the API.
-- Resulting Traktor keys now show musical and Camelot translations and take precedence over loaded keys.
-- Added opt-in per-launch token authentication for Traktor ingest while preserving legacy clients by default; foreign browser origins remain rejected.
-
 ## [0.7.3] - 2026-07-21
 
 ### Changed

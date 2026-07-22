@@ -12,7 +12,7 @@ Everything runs on your machine; nothing leaves `127.0.0.1`.
 
 ### 1. Install the Traktor QML mod (one time)
 
-The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/traktor-api-client), MIT) makes Traktor push deck state to `http://localhost:8080`. It can use the server's per-launch token when authentication is enabled.
+The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/traktor-api-client), MIT) makes Traktor push deck state to `http://localhost:8080`.
 
 1. Close Traktor.
 2. Open PowerShell **as Administrator** and run:
@@ -24,13 +24,11 @@ The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/trakto
 
 > **After a Traktor update:** NI updates can overwrite the mod. Just run `install.ps1` again.
 
-> **After an app update:** Re-run `install.ps1` when the QML mod changes. The mod obtains a per-launch ingest token automatically; no token configuration is needed.
-
 ### 2. Start the overlay server
 
 Double-click **`start-overlay.cmd`** (make a desktop shortcut for pre-stream convenience). It installs dependencies on first run, starts the server, and opens the overlay in your browser as a quick check. Start order does not matter: decks already loaded in Traktor appear within about 10 seconds; new loads appear immediately.
 
-Closing that window (the X button, Ctrl+C, or an ordinary process kill) stops the server with it; it does not linger as a background process. The server also exits on its own ~60 seconds after the last overlay window/OBS source disconnects (it won't exit before the first one connects). Use `node dist/main.js --no-auto-exit` to disable that. Use `node dist/main.js --require-auth`, or set `TRACK_ID_REQUIRE_AUTH=1` before launching `start-overlay.cmd`, to require the per-launch token for ingest requests.
+Closing that window (the X button, Ctrl+C, or an ordinary process kill) stops the server with it; it does not linger as a background process. The server also exits on its own ~60 seconds after the last overlay window/OBS source disconnects (it won't exit before the first one connects). Use `node dist/main.js --no-auto-exit` to disable that.
 
 ### 3. Add the overlay to OBS
 
@@ -52,7 +50,6 @@ Themes: the page ground defaults to dark (Pitch). The top-right toggle cycles da
 ## Privacy
 
 The server binds to `127.0.0.1` only. WebSocket connections from non-local web origins are rejected, and client-facing state never includes local file paths. Fonts are self-hosted; the overlay makes no external requests.
-Foreign browser origins are rejected before they reach the ingest handlers. Legacy ingest clients remain supported by default; use `--require-auth` to require the per-launch bearer token and Traktor client marker.
 
 ## How it decides what's "on air"
 
@@ -62,7 +59,7 @@ History starts empty on every launch and is written to `history/session-<date>.j
 
 ## Mixer telemetry
 
-Deck cards show live EQ positions, LOOP tags, and a dot when a deck's key is Camelot-compatible with the on-air track. Data arrives at 10 Hz from the QML mod; idle mixers send nothing. Re-run `traktor-mod\install.ps1` after updating to enable it.
+Deck cards show live EQ positions, LOOP and KEY LOCK tags, and a dot when a deck's key is Camelot-compatible with the on-air track. Data arrives at 10 Hz from the QML mod; idle mixers send nothing. Re-run `traktor-mod\install.ps1` after updating to enable it.
 
 ## Development
 
