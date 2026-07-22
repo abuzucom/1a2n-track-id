@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.7.4] - 2026-07-22
+
+### Removed
+
+- KEY LOCK badge on deck cards.
+
 ## [0.7.3] - 2026-07-21
 
 ### Changed
