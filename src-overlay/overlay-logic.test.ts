@@ -107,6 +107,10 @@ describe('keyLabel', () => {
     expect(keyLabel(track())).toBe('');
   });
 
+  it('treats prototype property names as unknown keys', () => {
+    expect(keyLabel(track({ keyText: '__proto__' }))).toBe('__proto__');
+  });
+
   it('uses an unparseable resultingKey without falling back to keyText', () => {
     expect(keyLabel(track({ keyText: '1d', resultingKey: '0.67' }))).toBe('0.67');
   });

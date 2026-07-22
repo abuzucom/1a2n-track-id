@@ -18,6 +18,7 @@ const post = (path: string, body: unknown) =>
       authorization: `Bearer ${ingestToken}`,
       'content-type': 'application/json',
       'x-simulated': '1',
+      'x-track-id-client': 'TraktorClient',
     },
     body: JSON.stringify(body),
   });

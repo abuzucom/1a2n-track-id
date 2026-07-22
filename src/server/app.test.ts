@@ -23,6 +23,7 @@ describe('ingest routes', () => {
 
   let resolver: CoverArtResolver;
   const INGEST_TOKEN = 'test-ingest-token';
+  const CLIENT_MARKER = 'TraktorClient';
   const allowedOrigin = 'http://127.0.0.1:8080';
 
   const post = (url: string, payload: unknown, headers: Record<string, string> = {}) =>
@@ -30,13 +31,23 @@ describe('ingest routes', () => {
       method: 'POST',
       url,
       payload,
-      headers: { authorization: `Bearer ${INGEST_TOKEN}`, ...headers },
+      headers: {
+        authorization: `Bearer ${INGEST_TOKEN}`,
+        'x-track-id-client': CLIENT_MARKER,
+        ...headers,
+      },
     });
 
   beforeEach(async () => {
     store = new TrackerStore({ historyDebounceMs: 0 });
     resolver = new CoverArtResolver();
-    app = buildApp({ store, resolver, ingestToken: INGEST_TOKEN, allowedOrigins: [allowedOrigin] });
+    app = buildApp({
+      store,
+      resolver,
+      ingestToken: INGEST_TOKEN,
+      allowedOrigins: [allowedOrigin],
+      requireIngestAuth: true,
+    });
     await app.ready();
   });
   afterEach(async () => {
@@ -56,7 +67,11 @@ describe('ingest routes', () => {
   });
 
   it('requires the bearer token on ingest routes', async () => {
-    const token = await app.inject({ method: 'GET', url: '/ingest-token' });
+    const token = await app.inject({
+      method: 'GET',
+      url: '/ingest-token',
+      headers: { 'x-track-id-client': CLIENT_MARKER },
+    });
     expect(token.statusCode).toBe(200);
     expect(token.json()).toEqual({ token: INGEST_TOKEN });
     expect(token.headers['cache-control']).toBe('no-store');
@@ -67,7 +82,7 @@ describe('ingest routes', () => {
       method: 'POST',
       url: '/deckLoaded/A',
       payload: { title: 'Blocked' },
-      headers: { authorization: 'Bearer wrong-token' },
+      headers: { authorization: 'Bearer wrong-token', 'x-track-id-client': CLIENT_MARKER },
     });
     expect(wrong.statusCode).toBe(401);
     expect((await app.inject({ method: 'GET', url: '/state' })).json().decks.A.track).toBeNull();
@@ -78,7 +93,11 @@ describe('ingest routes', () => {
       method: 'POST',
       url: '/deckLoaded/A',
       payload: { title: 'Blocked' },
-      headers: { authorization: `Bearer ${INGEST_TOKEN}`, origin: 'https://attacker.example' },
+      headers: {
+        authorization: `Bearer ${INGEST_TOKEN}`,
+        origin: 'https://attacker.example',
+        'x-track-id-client': CLIENT_MARKER,
+      },
     });
     expect(foreign.statusCode).toBe(403);
 
@@ -94,7 +113,7 @@ describe('ingest routes', () => {
       headers: {
         origin: allowedOrigin,
         'access-control-request-method': 'POST',
-        'access-control-request-headers': 'authorization, content-type',
+        'access-control-request-headers': 'authorization, content-type, x-track-id-client',
       },
     });
     expect(allowed.statusCode).toBe(204);
@@ -109,6 +128,24 @@ describe('ingest routes', () => {
       },
     });
     expect(foreign.statusCode).toBe(403);
+  });
+
+  it('keeps legacy ingest clients working when auth is not required', async () => {
+    const legacyStore = new TrackerStore({ historyDebounceMs: 0 });
+    const legacyApp = buildApp({ store: legacyStore, resolver, allowedOrigins: [allowedOrigin] });
+    await legacyApp.ready();
+    try {
+      const response = await legacyApp.inject({
+        method: 'POST',
+        url: '/deckLoaded/A',
+        payload: { title: 'Legacy Track' },
+      });
+      expect(response.statusCode).toBe(200);
+      expect(legacyStore.snapshot().decks.A.track?.title).toBe('Legacy Track');
+    } finally {
+      await legacyApp.close();
+      legacyStore.dispose();
+    }
   });
 
   it('accepts updateDeck, updateChannel, updateMasterClock', async () => {

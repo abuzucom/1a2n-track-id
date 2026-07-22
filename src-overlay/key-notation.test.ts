@@ -25,6 +25,7 @@ describe('musicalKeyLabel', () => {
   it('returns empty when neither is recognized', () => {
     expect(musicalKeyLabel('', '')).toBe('');
     expect(musicalKeyLabel('bogus', 'nope')).toBe('');
+    expect(musicalKeyLabel('__proto__', '')).toBe('');
   });
 
   it('tolerates case and surrounding whitespace from the CSI payload', () => {
@@ -78,6 +79,7 @@ describe('camelotKeyLabel', () => {
   it('returns empty for missing or unrecognized Open Key values', () => {
     expect(camelotKeyLabel('')).toBe('');
     expect(camelotKeyLabel('bogus')).toBe('');
+    expect(camelotKeyLabel('__proto__')).toBe('');
   });
 
   it('tolerates case and surrounding whitespace from the CSI payload', () => {

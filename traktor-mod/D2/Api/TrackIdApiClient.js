@@ -1,4 +1,5 @@
 var API_BASE_URL = "http://localhost:8080"
+var CLIENT_MARKER = "TraktorClient"
 var TOKEN_RETRY_MS = 1000
 var MAX_PENDING_REQUESTS = 100
 var authToken = null
@@ -16,6 +17,7 @@ function ensureToken() {
   if (authToken !== null || tokenRequest !== null) return
   tokenRequest = new XMLHttpRequest()
   tokenRequest.open("GET", API_BASE_URL + "/ingest-token", true)
+  tokenRequest.setRequestHeader("X-Track-Id-Client", CLIENT_MARKER)
   tokenRequest.onload = function() {
     var response = tokenRequest
     tokenRequest = null
@@ -63,6 +65,7 @@ function post(item) {
   request.open("POST", API_BASE_URL + "/" + item.endpoint, true)
   request.setRequestHeader("Content-Type", "application/json")
   request.setRequestHeader("Content-Length", body.length)
+  request.setRequestHeader("X-Track-Id-Client", CLIENT_MARKER)
   request.setRequestHeader("Authorization", "Bearer " + requestToken)
   request.onload = function() {
     if (request.status !== 401) return

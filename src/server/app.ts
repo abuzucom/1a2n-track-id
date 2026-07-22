@@ -32,11 +32,13 @@ export interface AppOptions {
   resolver?: CoverArtResolver;
   ingestToken?: string;
   allowedOrigins?: readonly string[];
+  requireIngestAuth?: boolean;
 }
 
 const TOKEN_BYTES = 32;
 const ALLOWED_METHODS = 'GET, POST, OPTIONS';
-const ALLOWED_HEADERS = 'Authorization, Content-Type, X-Simulated';
+const CLIENT_MARKER = 'TraktorClient';
+const ALLOWED_HEADERS = 'Authorization, Content-Type, X-Simulated, X-Track-Id-Client';
 const ALLOWED_REQUEST_HEADERS = new Set(ALLOWED_HEADERS.toLowerCase().split(', '));
 
 function createIngestToken(): string {
@@ -82,10 +84,12 @@ export function buildApp({
   resolver,
   ingestToken: configuredToken,
   allowedOrigins: configuredOrigins,
+  requireIngestAuth: configuredRequireAuth,
 }: AppOptions): App {
   const app = Fastify({ logger: false });
   const ingestToken = configuredToken ?? createIngestToken();
   const allowedOrigins = new Set(configuredOrigins ?? []);
+  const requireIngestAuth = configuredRequireAuth ?? false;
 
   app.addHook('onRequest', (req, reply, done) => {
     const origin = req.headers.origin;
@@ -127,7 +131,8 @@ export function buildApp({
   let hasSimulatedData = false;
   app.addHook('preHandler', (req, reply, done) => {
     if (req.method === 'POST') {
-      if (!hasValidToken(req.headers.authorization, ingestToken)) {
+      const hasClientMarker = req.headers['x-track-id-client'] === CLIENT_MARKER;
+      if (requireIngestAuth && (!hasClientMarker || !hasValidToken(req.headers.authorization, ingestToken))) {
         reply.code(401).send({ error: 'unauthorized' });
         return;
       }
@@ -142,7 +147,10 @@ export function buildApp({
     done();
   });
 
-  app.get('/ingest-token', async (_req, reply) => {
+  app.get('/ingest-token', async (req, reply) => {
+    if (requireIngestAuth && req.headers['x-track-id-client'] !== CLIENT_MARKER) {
+      return reply.code(403).send({ error: 'forbidden client' });
+    }
     reply.header('cache-control', 'no-store');
     return { token: ingestToken };
   });
