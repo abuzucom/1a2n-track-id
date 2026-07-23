@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.7.5] - 2026-07-23
+
+### Fixed
+
+- Cover-art extraction no longer parses arbitrarily large files or stalls on a slow parse: files over 50 MiB are skipped and any parse taking longer than 5s is abandoned, both treated the same as "no cover art" instead of tying up the resolver.
+
 ## [0.7.4] - 2026-07-22
 
 ### Removed

@@ -54,4 +54,11 @@ describe('CoverArtResolver', () => {
     const art = await resolver.resolve(file);
     expect(art?.mime).toBe('image/png');
   });
+
+  it('skips parsing and returns null for files over the configured size cap', async () => {
+    const file = join(dir, 'track.mp3');
+    await writeFile(file, mp3WithCover());
+    const capped = new CoverArtResolver(200, { maxFileSizeBytes: 10 });
+    expect(await capped.resolve(file)).toBeNull();
+  });
 });
