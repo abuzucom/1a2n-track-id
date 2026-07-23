@@ -1,6 +1,6 @@
 # 1a2n-track-id
 
-Local overlay server for Twitch DJ streams: live Traktor Pro 4 deck/track info rendered as an OBS browser source. Shows all four decks, a now-playing hero with cover art, and a track history list.
+Local overlay server for Twitch DJ streams: live Traktor Pro 4 deck/track info rendered as an OBS browser source. Shows all four decks, a now-playing hero with cover art, BPM, Camelot/Open Key/standard key notation, track position, and a track history list.
 
 ```
 Traktor Pro 4 (QML mod) --HTTP POST--> local server --WebSocket--> OBS browser source
@@ -59,7 +59,21 @@ History starts empty on every launch and is written to `history/session-<date>.j
 
 ## Mixer telemetry
 
-Deck cards show live EQ positions, a LOOP tag, and a dot when a deck's key is Camelot-compatible with the on-air track. Data arrives at 10 Hz from the QML mod; idle mixers send nothing. Re-run `traktor-mod\install.ps1` after updating to enable it.
+Deck cards show live EQ positions, a LOOP tag, and a dot when a deck's key is Camelot-compatible with the on-air track. Data arrives at 10 Hz from the QML mod via `/updateMixer`; idle mixers send nothing. Re-run `traktor-mod\install.ps1` after updating to enable it.
+
+## Ingest API
+
+The QML mod posts deck state to these routes; nothing outside `127.0.0.1` can reach them.
+
+| Route | Purpose |
+| --- | --- |
+| `POST /deckLoaded/:deck` | A track loaded into a deck (`deck` is a Traktor deck id) |
+| `POST /updateDeck/:deck` | Deck state changed (play/cue/position/etc.) |
+| `POST /updateChannel/:n` | Mixer channel `n` (1-4) changed (volume, EQ, crossfader) |
+| `POST /updateMixer` | Mixer-wide telemetry (loops, key compatibility) |
+| `POST /updateMasterClock` | Master BPM/tempo/beat clock changed |
+| `GET /state` | Current snapshot as JSON (file paths stripped) |
+| `GET /art/:id` | Cover art lookup by cache id |
 
 ## Development
 
@@ -67,6 +81,7 @@ Deck cards show live EQ positions, a LOOP tag, and a dot when a deck's key is Ca
 npm run dev        # dev server on port 8090 with reload (auto-exit disabled)
 npm run simulate   # fake deck data against the dev server, no Traktor needed
 npm test           # vitest
+npm run test:watch # vitest in watch mode
 npm run lint       # eslint
 npm run typecheck  # tsc, covers src/, src-overlay/, and scripts/
 npm run build      # production build (tsc + esbuild)

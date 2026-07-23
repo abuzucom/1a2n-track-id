@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.7.5] - 2026-07-23
+
+### Changed
+
+- README now documents the `/updateMixer` ingest route and the full ingest API table, lists BPM/key/track-position in the feature summary, and mentions `npm run test:watch`.
+
 ## [0.7.4] - 2026-07-22
 
 ### Removed
