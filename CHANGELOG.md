@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.8.0] - 2026-07-25
+
+### Added
+
+- `GET /state` and the `/ws` state message now include a `schemaVersion` field (currently `1`), so external consumers can distinguish "server unreachable" from "shape I don't recognize" instead of failing closed on both.
+- `docs/state-api.md` documents the `/state` and `/ws` state-message contract for external consumers (e.g. chat bots polling this server), formalizing what was previously only implicit in `CLAUDE.md`'s public API surface list.
+
 ## [0.7.6] - 2026-07-23
 
 ### Fixed

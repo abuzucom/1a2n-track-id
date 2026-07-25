@@ -50,7 +50,9 @@ WebSocket to the OBS overlay (`public/index.html` plus
 Public API surface (rules 5-6): ingest routes `/deckLoaded/:deck`,
 `/updateDeck/:deck`, `/updateChannel/:n`, `/updateMasterClock`; `/state`;
 `/ws`; overlay URLs with `?view=` and `?theme=` params; CLI flags
-`--no-auto-exit`, `--resume`, `--dev`.
+`--no-auto-exit`, `--resume`, `--dev`. `/state` and the `/ws` state message
+are documented for external consumers in `docs/state-api.md`, versioned via
+the `schemaVersion` field; keep that doc in sync with `ClientSnapshot`.
 
 ## Gotchas
 

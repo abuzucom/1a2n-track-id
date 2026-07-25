@@ -49,6 +49,11 @@ describe('ingest routes', () => {
     expect(body.decks.A.track.bpm).toBe(130);
   });
 
+  it('reports the state schema version', async () => {
+    const state = await app.inject({ method: 'GET', url: '/state' });
+    expect(state.json().schemaVersion).toBe(1);
+  });
+
   it('accepts updateDeck, updateChannel, updateMasterClock', async () => {
     await app.inject({ method: 'POST', url: '/deckLoaded/C', payload: { title: 'X' } });
     expect(
