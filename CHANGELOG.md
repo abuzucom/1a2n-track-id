@@ -2,6 +2,21 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.9.0] - 2026-07-26
+
+### Added
+
+- `mixer.channels[].onAirLevel`: the channel fader attenuated by crossfader position, so consumers can tell how much each deck actually contributes to the mix. The existing `level` is a pre-fader meter and reflects track loudness rather than mix contribution, so with several decks layered it cannot distinguish a deck riding at unity from one parked low. The QML mod has always computed and posted this value; the store simply discarded it.
+- `track.musicalKey`: Traktor's analyzed key as a 0-23 integer, the same encoding as `<MUSICAL_KEY VALUE="n"/>` in `collection.nml`, so external consumers can join a playing deck to a library entry without parsing key strings.
+- `track.streamingId`: an opaque id for a track played from a streaming source (e.g. `beatport://tracks/N`), empty for local files. Exactly one of `streamingId` and `filePath` identifies any given track.
+
+### Fixed
+
+- The QML mod no longer mangles streaming URIs into fake paths. `getFilePath()` expands macOS-style `Macintosh HD:Users:...` values by prefixing `/Volumes/` and replacing colons, which turned `beatport://tracks/N` into `/Volumes/beatport///tracks/N`. URIs are now reported as `streamingId` and `filePath` is left empty for them.
+- `updateChannel` keep-alive now includes `onAirLevel`, so a server started mid-set converges on the real value instead of reading 0 for every channel until a fader moves.
+- A repeated `deckLoaded` is no longer treated as a refresh when only the `streamingId` differs. Two streamed tracks sharing a title would previously have reused the load id, which history deduplicates on, so the second play went unrecorded.
+- Corrected the note about the virtual Kontrol D2: it persists across ordinary Traktor restarts and only needs re-adding after `install.ps1` replaces the mapping, rather than every session.
+
 ## [0.8.0] - 2026-07-25
 
 ### Added

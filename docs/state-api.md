@@ -80,10 +80,21 @@ interface TrackSnapshot {
   tempo: number | null;      // multiplier near 1.0; live BPM is bpm * tempo
   resultingKey: string;
   keyText: string;
+  musicalKey: number | null;  // 0-23: 0-11 major C..B, 12-23 minor
   trackLength: number | null; // seconds
+  streamingId: string;        // e.g. "beatport://tracks/N"; '' for local files
   artUrl?: string;             // e.g. /art/<id>, fetch relative to the server origin
 }
 ```
+
+`musicalKey` is Traktor's analyzed key as an integer and uses the same
+encoding as `<MUSICAL_KEY VALUE="n"/>` in `collection.nml`, so consumers can
+join the two without parsing key strings. `keyText` (Open Key) remains the
+reliable string form; `resultingKey` is not dependably Camelot-formatted.
+
+`streamingId` identifies a track played from a streaming source, where there
+is no local file. It is empty for local files, and `filePath` is empty for
+streamed tracks, so exactly one of the two identifies any given track.
 
 Local file paths are never included in a `ClientSnapshot` (they are stripped
 server-side before this shape is built).
@@ -110,13 +121,30 @@ debounce window, so brief cues/previews are not logged.
 
 ```ts
 interface MixerState {
-  channels: { level: number; eq: { high: number; mid: number; low: number } }[]; // index 0-3 = channel 1-4
+  channels: {
+    level: number;       // PRE-fader meter: track loudness, not mix contribution
+    eq: { high: number; mid: number; low: number };
+    onAirLevel: number;  // POST-fader: contribution to the mix
+  }[]; // index 0-3 = channel 1-4
   xfader: number;   // 0 = full A side, 1 = full B side
   master: { left: number; right: number; sum: number; clip: boolean };
 }
 ```
 
 All levels are normalized `0..1`.
+
+`level` and `onAirLevel` answer different questions and are easy to confuse.
+`level` is a pre-fader meter, so it reflects how loud the track itself is and
+barely moves when the channel fader does. `onAirLevel` is the channel fader
+attenuated by crossfader position, so it is the one to use when weighting how
+much each deck contributes to what the audience hears. With several decks
+layered, `level` cannot distinguish a deck riding at unity from one parked
+low; `onAirLevel` can.
+
+Note `onAir` remains a boolean derived from volume and crossfader assignment
+only. It does not account for EQ, so a deck with every band cut still reports
+`onAir: true`. Consumers wanting audibility should weigh `onAirLevel` and
+`eq` themselves.
 
 ## Stability notes for consumers
 

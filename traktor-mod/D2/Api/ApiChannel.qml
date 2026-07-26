@@ -28,6 +28,7 @@ Item {
     onTriggered: {
       ApiClient.send("updateChannel/" + index, {
         isOnAir: computeIsOnAir(),
+        onAirLevel: computeOnAirLevel(),
         eq: {
           high: propEqHigh.value,
           mid: propEqMid.value,
@@ -61,11 +62,7 @@ Item {
     interval: 250
 
     onTriggered: {
-      var onAirLevel = propVolume.value
-      if ((propXfaderAssignLeft.value && propXfaderAdjust.value > 0.5)
-        || (propXfaderAssignRight.value && propXfaderAdjust.value < 0.5)) {
-        onAirLevel *= 1 - Math.abs(propXfaderAdjust.value * 2 - 1)
-      }
+      var onAirLevel = computeOnAirLevel()
 
       if (onAirLevel != onAirLevelState) {
         ApiClient.send("updateChannel/" + index, {
@@ -74,6 +71,15 @@ Item {
         onAirLevelState = onAirLevel
       }
     }
+  }
+
+  function computeOnAirLevel() {
+    var level = propVolume.value
+    if ((propXfaderAssignLeft.value && propXfaderAdjust.value > 0.5)
+      || (propXfaderAssignRight.value && propXfaderAdjust.value < 0.5)) {
+      level *= 1 - Math.abs(propXfaderAdjust.value * 2 - 1)
+    }
+    return level
   }
 
   function computeIsOnAir() {

@@ -118,6 +118,7 @@ Item {
 
       ApiClient.send("deckLoaded/" + deckLetter, {
         filePath:     getFilePath(),
+        streamingId:  getStreamingId(),
         title:        propTitle.value,
         artist:       propArtist.value,
         album:        propAlbum.value,
@@ -217,8 +218,23 @@ Item {
 
     return { next: null, prev: prevCueIdx }
   }
+  // Traktor reports a URI here for streamed decks (e.g. Beatport), not a
+  // path. The /Volumes/ branch below exists to expand macOS-style
+  // "Macintosh HD:Users:..." paths and would mangle a URI into
+  // "/Volumes/beatport///tracks/N", so URIs are separated out first and
+  // reported as streamingId instead.
+  function isUri(value) {
+    return /^[a-z][a-z0-9+.-]*:\/\//i.test(value)
+  }
+
+  function getStreamingId() {
+    if (!propFilePath.value) return ""
+    return isUri(propFilePath.value) ? propFilePath.value : ""
+  }
+
   function getFilePath() {
     if (!propFilePath.value) return ""
+    if (isUri(propFilePath.value)) return ""
 
     return /^[A-Z]:\\/.test(propFilePath.value) || /^\//.test(propFilePath.value)
       ? propFilePath.value
