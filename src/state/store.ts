@@ -81,7 +81,16 @@ export interface Snapshot {
 
 export type ClientTrackInfo = Omit<TrackInfo, 'filePath'>;
 export type ClientHistoryEntry = Omit<HistoryEntry, 'filePath'>;
+
+/**
+ * Version of the GET /state and WebSocket state-message shape, for external
+ * consumers (see docs/state-api.md). Bump only on a breaking change; new
+ * optional fields do not require a bump.
+ */
+export const STATE_SCHEMA_VERSION = 1;
+
 export interface ClientSnapshot {
+  schemaVersion: number;
   decks: Record<DeckId, Omit<DeckState, 'track'> & { track: ClientTrackInfo | null }>;
   history: ClientHistoryEntry[];
   masterClock: MasterClock;
@@ -102,6 +111,7 @@ export function toClientSnapshot(snap: Snapshot): ClientSnapshot {
     decks[id] = { ...rest, track: track ? withoutFilePath(track) : null };
   }
   return {
+    schemaVersion: STATE_SCHEMA_VERSION,
     decks,
     history: snap.history.map(withoutFilePath),
     masterClock: snap.masterClock,
