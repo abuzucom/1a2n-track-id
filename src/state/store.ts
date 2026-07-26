@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { bool, clamp01, num, str } from './coerce.js';
+import { bool, clamp01, num, numStrict, str } from './coerce.js';
 
 export type DeckId = 'A' | 'B' | 'C' | 'D';
 export const DECK_IDS: readonly DeckId[] = ['A', 'B', 'C', 'D'];
@@ -18,10 +18,14 @@ export interface TrackInfo {
   remixer: string;
   comment: string;
   filePath: string;
+  /** Opaque id for a streamed track (e.g. "beatport://tracks/N"); '' for local files. */
+  streamingId: string;
   bpm: number | null;
   tempo: number | null;
   resultingKey: string;
   keyText: string;
+  /** Traktor's analyzed key as 0-23 (0-11 major C..B, 12-23 minor); matches collection.nml. */
+  musicalKey: number | null;
   trackLength: number | null;
   artUrl?: string;
 }
@@ -45,8 +49,11 @@ export interface EqState {
 }
 
 export interface MixerChannel {
+  /** Pre-fader meter: how loud the track is, not how loud it is in the mix. */
   level: number;
   eq: EqState;
+  /** Post-fader contribution to the mix: channel fader attenuated by the crossfader. */
+  onAirLevel: number;
 }
 
 export interface MixerState {
@@ -139,7 +146,11 @@ function emptyDeck(): DeckState {
 
 function emptyMixer(): MixerState {
   return {
-    channels: [0, 1, 2, 3].map(() => ({ level: 0, eq: { high: 0.5, mid: 0.5, low: 0.5 } })),
+    channels: [0, 1, 2, 3].map(() => ({
+      level: 0,
+      eq: { high: 0.5, mid: 0.5, low: 0.5 },
+      onAirLevel: 0,
+    })),
     xfader: 0.5,
     master: { left: 0, right: 0, sum: 0, clip: false },
   };
@@ -174,10 +185,14 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     // The QML mod re-sends loaded decks periodically so a server started
     // after the track was loaded still converges. An identical track is a
     // refresh: keep loadId (history dedupe), playing state, and art.
+    // Streamed decks have no filePath, so title plus path alone would treat
+    // two different streamed tracks with the same title as a refresh and
+    // reuse the load id, which history dedupes on.
     const isRefresh =
       d.track !== null &&
       d.track.title === str(payload.title) &&
-      d.track.filePath === str(payload.filePath);
+      d.track.filePath === str(payload.filePath) &&
+      d.track.streamingId === str(payload.streamingId);
     if (isRefresh) {
       this.emitChange();
       return;
@@ -192,10 +207,12 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
       remixer: str(payload.remixer),
       comment: str(payload.comment),
       filePath: str(payload.filePath),
+      streamingId: str(payload.streamingId),
       bpm: num(payload.bpm),
       tempo: num(payload.tempo),
       resultingKey: str(payload.resultingKey),
       keyText: str(payload.keyText),
+      musicalKey: numStrict(payload.key),
       trackLength: num(payload.trackLength),
     };
     d.loadId = this.nextLoadId++;
@@ -225,8 +242,9 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     const deck = DECK_IDS[index - 1];
     if (!deck) throw new RangeError(`invalid channel index: ${index}`);
     if ('isOnAir' in payload) this.channelOnAir[deck] = bool(payload.isOnAir);
-    const eq = payload.eq;
     const channel = this.mixer.channels[index - 1];
+    if ('onAirLevel' in payload && channel) channel.onAirLevel = clamp01(payload.onAirLevel);
+    const eq = payload.eq;
     if (typeof eq === 'object' && eq !== null && channel) {
       const raw = eq as Record<string, unknown>;
       channel.eq = { high: clamp01(raw.high), mid: clamp01(raw.mid), low: clamp01(raw.low) };

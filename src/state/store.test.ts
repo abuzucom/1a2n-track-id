@@ -157,6 +157,53 @@ describe('TrackerStore', () => {
     expect(store.snapshot().mixer.channels[1]?.eq).toEqual({ high: 0.7, mid: 0.5, low: 1 });
   });
 
+  it('stores onAirLevel per channel, clamped, defaulting to 0', () => {
+    expect(store.snapshot().mixer.channels[0]?.onAirLevel).toBe(0);
+    store.updateChannel(1, { onAirLevel: 0.75 });
+    store.updateChannel(2, { onAirLevel: 1.4 });
+    store.updateChannel(3, { onAirLevel: -0.2 });
+    store.updateChannel(4, { onAirLevel: 'x' });
+    expect(store.snapshot().mixer.channels.map((c) => c.onAirLevel)).toEqual([0.75, 1, 0, 0]);
+  });
+
+  it('leaves onAirLevel alone when a payload omits it', () => {
+    store.updateChannel(1, { onAirLevel: 0.6 });
+    store.updateChannel(1, { eq: { high: 0.5, mid: 0.5, low: 0.5 } });
+    expect(store.snapshot().mixer.channels[0]?.onAirLevel).toBe(0.6);
+  });
+
+  it('captures the numeric musical key from deckLoaded', () => {
+    store.deckLoaded('A', { title: 'Keyed', key: 13, keyText: '5m' });
+    expect(store.snapshot().decks.A.track?.musicalKey).toBe(13);
+  });
+
+  it('leaves musicalKey null when absent or not a number', () => {
+    store.deckLoaded('A', { title: 'No key' });
+    expect(store.snapshot().decks.A.track?.musicalKey).toBeNull();
+    store.deckLoaded('B', { title: 'Bad key', key: 'thirteen' });
+    expect(store.snapshot().decks.B.track?.musicalKey).toBeNull();
+  });
+
+  it('captures streamingId for a streamed deck and leaves filePath empty', () => {
+    store.deckLoaded('A', {
+      title: 'Our Moon feat. Lovlee',
+      streamingId: 'beatport://tracks/15344478',
+      filePath: '',
+    });
+    const track = store.snapshot().decks.A.track;
+    expect(track?.streamingId).toBe('beatport://tracks/15344478');
+    expect(track?.filePath).toBe('');
+  });
+
+  it('distinguishes two streamed tracks that share a title', () => {
+    store.deckLoaded('A', { title: 'Untitled', streamingId: 'beatport://tracks/1' });
+    store.deckLoaded('A', { title: 'Untitled', streamingId: 'beatport://tracks/2' });
+    // Not a refresh: a different streamingId is a different track, so the
+    // load id must advance or history would dedupe two distinct plays.
+    expect(store.snapshot().decks.A.track?.streamingId).toBe('beatport://tracks/2');
+    expect(store.snapshot().decks.A.loadId).toBe(2);
+  });
+
   it('passes isLooping and isKeyLockOn through updateDeck', () => {
     load(store, 'A', 'Loopy');
     store.updateDeck('A', { isLooping: true, isKeyLockOn: true });

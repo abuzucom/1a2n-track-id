@@ -58,7 +58,7 @@ the `schemaVersion` field; keep that doc in sync with `ClientSnapshot`.
 
 - Dev runs on port 8090, production on 8080; never cross them.
 - QML mod edits require re-running `traktor-mod\install.ps1` (admin PowerShell, Traktor closed).
-- Traktor does not persist the virtual Kontrol D2; re-add per session via Preferences > Controller Manager > Pre-mapped.
+- Re-add the virtual Kontrol D2 (Preferences > Controller Manager > Pre-mapped) after re-running `install.ps1`, which replaces the mapping. It persists across ordinary Traktor restarts, so this is not a per-session chore.
 - Traktor `tempo` is a multiplier near 1.0; live BPM is `bpm * tempo`.
 - OBS suspends requestAnimationFrame in browser sources; never use it for content updates.
 - The `x-simulated: 1` header marks simulator data; real data purges it.
