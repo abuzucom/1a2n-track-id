@@ -1,7 +1,13 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { numStrict, str } from './coerce.js';
-import type { HistoryEntry } from './store.js';
+import { isDeckId, type DeckId, type HistoryEntry } from './store.js';
+
+/** Deck ids from a pre-0.10.0 file are absent; anything unrecognized is null. */
+function deckOrNull(v: unknown): DeckId | null {
+  const raw = str(v);
+  return isDeckId(raw) ? raw : null;
+}
 
 /** Coerce one persisted entry to a valid shape; the file is not trusted input. */
 function sanitizeEntry(v: unknown): HistoryEntry | null {
@@ -17,6 +23,17 @@ function sanitizeEntry(v: unknown): HistoryEntry | null {
     bpm: numStrict(raw.bpm),
     resultingKey: str(raw.resultingKey),
     playedAt: str(raw.playedAt),
+    // Added in 0.10.0. Files written by earlier versions lack these, so they
+    // default rather than making the entry unloadable.
+    genre: str(raw.genre),
+    keyText: str(raw.keyText),
+    musicalKey: numStrict(raw.musicalKey),
+    trackLength: numStrict(raw.trackLength),
+    tempo: numStrict(raw.tempo),
+    streamingId: str(raw.streamingId),
+    trackKey: str(raw.trackKey),
+    deck: deckOrNull(raw.deck),
+    loadId: numStrict(raw.loadId),
   };
 }
 

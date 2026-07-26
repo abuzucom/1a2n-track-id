@@ -1,5 +1,6 @@
 import { EventEmitter } from 'node:events';
 import { bool, clamp01, num, numStrict, str } from './coerce.js';
+import { trackKeyFor } from './track-key.js';
 
 export type DeckId = 'A' | 'B' | 'C' | 'D';
 export const DECK_IDS: readonly DeckId[] = ['A', 'B', 'C', 'D'];
@@ -20,6 +21,8 @@ export interface TrackInfo {
   filePath: string;
   /** Opaque id for a streamed track (e.g. "beatport://tracks/N"); '' for local files. */
   streamingId: string;
+  /** Opaque id derived from filePath, for joining to an external library; '' when streamed. */
+  trackKey: string;
   bpm: number | null;
   tempo: number | null;
   resultingKey: string;
@@ -72,6 +75,17 @@ export interface HistoryEntry {
   bpm: number | null;
   resultingKey: string;
   playedAt: string;
+  genre: string;
+  keyText: string;
+  musicalKey: number | null;
+  trackLength: number | null;
+  tempo: number | null;
+  streamingId: string;
+  trackKey: string;
+  /** Which deck aired it. Null only for entries loaded from a pre-0.10.0 file. */
+  deck: DeckId | null;
+  /** The deck's load id at commit time. Null only for pre-0.10.0 entries. */
+  loadId: number | null;
 }
 
 export interface MasterClock {
@@ -208,6 +222,7 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
       comment: str(payload.comment),
       filePath: str(payload.filePath),
       streamingId: str(payload.streamingId),
+      trackKey: trackKeyFor(str(payload.filePath)),
       bpm: num(payload.bpm),
       tempo: num(payload.tempo),
       resultingKey: str(payload.resultingKey),
@@ -372,6 +387,15 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
       bpm: d.track.bpm,
       resultingKey: d.track.resultingKey,
       playedAt: new Date().toISOString(),
+      genre: d.track.genre,
+      keyText: d.track.keyText,
+      musicalKey: d.track.musicalKey,
+      trackLength: d.track.trackLength,
+      tempo: d.track.tempo,
+      streamingId: d.track.streamingId,
+      trackKey: d.track.trackKey,
+      deck,
+      loadId: d.loadId,
     });
     if (this.history.length > this.maxHistory) this.history = this.history.slice(-this.maxHistory);
     this.emitChange();
