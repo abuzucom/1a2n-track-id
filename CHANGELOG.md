@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.10.0] - 2026-07-26
+
+### Added
+
+- `track.trackKey` and `HistoryEntrySnapshot.trackKey`: a stable opaque id for a local track, the first 16 hex characters of the SHA-256 of its absolute path. Lets an external consumer join a playing deck to its own library index without this server emitting a file path, which would leak the username. Empty for streamed tracks, which carry `streamingId` instead, so between the two every track has exactly one identifier.
+- History entries now carry `genre`, `keyText`, `musicalKey`, `trackLength`, `tempo`, `streamingId`, and `trackKey`, matching what `TrackSnapshot` already exposed. A consumer can reason about what was played using the same joins it uses for what is playing. Previously history offered only `resultingKey`, which is not dependably Camelot-formatted, so the reliable key was available for the current track but not for the set.
+- History entries now carry `deck` and `loadId`. With several decks layered, two entries seconds apart may be a layer or a swap, and there was previously no way to tell.
+
+### Changed
+
+- `CoverArtResolver.idFor` now delegates to the new `trackKeyFor`, so the art-cache id and the join key have one definition rather than two identical implementations that could drift.
+
+History files written before this release load unchanged: fields they predate default to `''` or `null` rather than making the entry unloadable, so `--resume` still works across the upgrade. An unrecognized `deck` value in a file is rejected rather than trusted.
+
 ## [0.9.0] - 2026-07-26
 
 ### Added

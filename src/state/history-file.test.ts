@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -15,6 +15,15 @@ const entry = (title: string): HistoryEntry => ({
   bpm: null,
   resultingKey: '',
   playedAt: new Date().toISOString(),
+  genre: '',
+  keyText: '',
+  musicalKey: null,
+  trackLength: null,
+  tempo: null,
+  streamingId: '',
+  trackKey: '',
+  deck: null,
+  loadId: null,
 });
 
 describe('HistoryFile', () => {
@@ -33,6 +42,49 @@ describe('HistoryFile', () => {
     await hf.save([entry('One'), entry('Two')]);
     const loaded = await new HistoryFile(file).load();
     expect(loaded.map((e) => e.title)).toEqual(['One', 'Two']);
+  });
+
+  it('loads a pre-0.10.0 file, defaulting the fields it predates', async () => {
+    // Written by 0.9.0 or earlier: no genre, keyText, musicalKey, tempo,
+    // trackLength, streamingId, trackKey, deck, or loadId. --resume must
+    // still load these rather than discarding the session.
+    const file = join(dir, 'legacy.json');
+    await writeFile(
+      file,
+      JSON.stringify([
+        {
+          title: 'Old Entry',
+          artist: 'A',
+          album: '',
+          label: '',
+          mix: '',
+          filePath: 'K:\\Music\\old.flac',
+          bpm: 128,
+          resultingKey: '8A',
+          playedAt: '2026-07-01T00:00:00.000Z',
+        },
+      ]),
+      'utf8',
+    );
+    const loaded = await new HistoryFile(file).load();
+    expect(loaded).toHaveLength(1);
+    expect(loaded[0]?.title).toBe('Old Entry');
+    expect(loaded[0]?.bpm).toBe(128);
+    expect(loaded[0]?.genre).toBe('');
+    expect(loaded[0]?.musicalKey).toBeNull();
+    expect(loaded[0]?.deck).toBeNull();
+    expect(loaded[0]?.loadId).toBeNull();
+  });
+
+  it('rejects an unrecognized deck id rather than trusting the file', async () => {
+    const file = join(dir, 'baddeck.json');
+    await writeFile(
+      file,
+      JSON.stringify([{ ...entry('X'), deck: 'Z' }]),
+      'utf8',
+    );
+    const loaded = await new HistoryFile(file).load();
+    expect(loaded[0]?.deck).toBeNull();
   });
 
   it('returns empty history for a missing file', async () => {

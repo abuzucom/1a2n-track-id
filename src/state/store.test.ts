@@ -1,5 +1,6 @@
 import { beforeEach, afterEach, describe, expect, it, vi } from 'vitest';
 import { TrackerStore, type DeckId } from './store.js';
+import { trackKeyFor } from './track-key.js';
 
 const load = (store: TrackerStore, deck: DeckId, title: string, artist = 'Artist') =>
   store.deckLoaded(deck, {
@@ -170,6 +171,60 @@ describe('TrackerStore', () => {
     store.updateChannel(1, { onAirLevel: 0.6 });
     store.updateChannel(1, { eq: { high: 0.5, mid: 0.5, low: 0.5 } });
     expect(store.snapshot().mixer.channels[0]?.onAirLevel).toBe(0.6);
+  });
+
+  it('records the full track identity and metadata in history', () => {
+    store.deckLoaded('C', {
+      title: 'Fable (Message Version)',
+      artist: 'Robert Miles',
+      album: 'Album',
+      genre: 'Trance (Main Floor)',
+      label: 'Label',
+      mix: 'Extended Mix',
+      filePath: 'K:\\Music\\fable.flac',
+      bpm: 138,
+      tempo: 1.014,
+      keyText: '5m',
+      key: 13,
+      resultingKey: '8A',
+      trackLength: 430,
+      isPlaying: true,
+    });
+    store.updateChannel(3, { isOnAir: true });
+    vi.advanceTimersByTime(10_000);
+
+    const entry = store.snapshot().history[0];
+    expect(entry).toBeDefined();
+    expect(entry?.genre).toBe('Trance (Main Floor)');
+    expect(entry?.keyText).toBe('5m');
+    expect(entry?.musicalKey).toBe(13);
+    expect(entry?.trackLength).toBe(430);
+    expect(entry?.tempo).toBe(1.014);
+    expect(entry?.deck).toBe('C');
+    expect(entry?.loadId).toBe(1);
+    expect(entry?.trackKey).toBe(trackKeyFor('K:\\Music\\fable.flac'));
+    expect(entry?.streamingId).toBe('');
+  });
+
+  it('records streamingId in history for a streamed play', () => {
+    store.deckLoaded('A', {
+      title: 'Our Moon feat. Lovlee',
+      streamingId: 'beatport://tracks/15344478',
+      filePath: '',
+      isPlaying: true,
+    });
+    store.updateChannel(1, { isOnAir: true });
+    vi.advanceTimersByTime(10_000);
+
+    const entry = store.snapshot().history[0];
+    expect(entry?.streamingId).toBe('beatport://tracks/15344478');
+    expect(entry?.trackKey).toBe('');
+  });
+
+  it('exposes trackKey on a deck track but never the file path', () => {
+    store.deckLoaded('A', { title: 'Local', filePath: 'K:\\Music\\x.flac' });
+    const snap = store.snapshot();
+    expect(snap.decks.A.track?.trackKey).toBe(trackKeyFor('K:\\Music\\x.flac'));
   });
 
   it('captures the numeric musical key from deckLoaded', () => {

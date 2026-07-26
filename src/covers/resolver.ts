@@ -1,6 +1,6 @@
-import { createHash } from 'node:crypto';
 import { stat } from 'node:fs/promises';
 import { parseFile, selectCover } from 'music-metadata';
+import { trackKeyFor } from '../state/track-key.js';
 
 export interface CoverArt {
   data: Buffer;
@@ -34,7 +34,7 @@ export class CoverArtResolver {
   }
 
   idFor(filePath: string): string {
-    return createHash('sha256').update(filePath).digest('hex').slice(0, 16);
+    return trackKeyFor(filePath);
   }
 
   get(id: string): CoverArt | null {

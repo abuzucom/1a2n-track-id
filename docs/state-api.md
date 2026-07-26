@@ -83,6 +83,7 @@ interface TrackSnapshot {
   musicalKey: number | null;  // 0-23: 0-11 major C..B, 12-23 minor
   trackLength: number | null; // seconds
   streamingId: string;        // e.g. "beatport://tracks/N"; '' for local files
+  trackKey: string;           // opaque id derived from the local file; '' when streamed
   artUrl?: string;             // e.g. /art/<id>, fetch relative to the server origin
 }
 ```
@@ -95,6 +96,13 @@ reliable string form; `resultingKey` is not dependably Camelot-formatted.
 `streamingId` identifies a track played from a streaming source, where there
 is no local file. It is empty for local files, and `filePath` is empty for
 streamed tracks, so exactly one of the two identifies any given track.
+
+`trackKey` is a stable opaque id for a local track, the first 16 hex
+characters of the SHA-256 of its absolute path. It exists so a consumer can
+join a playing deck to its own library index without this server ever
+emitting a file path, which would leak the username. Hash a local path the
+same way to match. It is `''` for streamed tracks, which carry `streamingId`
+instead, so between the two every track has exactly one identifier.
 
 Local file paths are never included in a `ClientSnapshot` (they are stripped
 server-side before this shape is built).
@@ -110,9 +118,27 @@ interface HistoryEntrySnapshot {
   mix: string;
   bpm: number | null;
   resultingKey: string;
-  playedAt: string; // ISO 8601
+  playedAt: string;           // ISO 8601
+  genre: string;
+  keyText: string;
+  musicalKey: number | null;
+  trackLength: number | null;
+  tempo: number | null;       // multiplier at commit time
+  streamingId: string;
+  trackKey: string;
+  deck: 'A' | 'B' | 'C' | 'D' | null;
+  loadId: number | null;
 }
 ```
+
+History entries carry the same identity and key fields as `TrackSnapshot`, so
+a consumer can reason about what was played with the same joins it uses for
+what is playing.
+
+`deck` and `loadId` record which deck aired the entry and its load id at the
+time. With several decks layered, two entries seconds apart may be a layer or
+a swap, and these distinguish the two. Both are `null` only for entries
+loaded from a history file written before 0.10.0.
 
 An entry is added once a track has been on air continuously for a short
 debounce window, so brief cues/previews are not logged.
