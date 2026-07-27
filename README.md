@@ -1,12 +1,12 @@
 # 1a2n-track-id
 
-Local overlay server for Twitch DJ streams: live Traktor Pro 4 deck/track info rendered as an OBS browser source. Shows all four decks, a now-playing hero with cover art, BPM, Camelot/Open Key/standard key notation, track position, and a track history list.
+Local overlay server for Twitch DJ streams: live Traktor Pro 4 deck/track info rendered as an OBS browser source. Shows all four decks, now playing with cover at, BPM, key notation, track position, and a track history list.
 
 ```
 Traktor Pro 4 (QML mod) --HTTP POST--> local server --WebSocket--> OBS browser source
 ```
 
-Everything runs on your machine; nothing leaves `127.0.0.1`.
+Local only; nothing leaves `127.0.0.1`.
 
 ## Setup
 
@@ -20,9 +20,11 @@ The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/trakto
    .\traktor-mod\install.ps1
    ```
    (Backs up the stock files; `.\traktor-mod\uninstall.ps1` restores them.)
-3. Start Traktor Pro 4. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. No hardware is needed; the "virtual" D2 mapping is what runs the mod.
+3. Start Traktor Pro 4. No hardware is needed. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. The "virtual" D2 mapping is what runs the mod.
 
 > **After a Traktor update:** NI updates can overwrite the mod. Just run `install.ps1` again.
+
+> **After a material change in the QML mod:** Run `install.ps1` again.
 
 ### 2. Start the overlay server
 

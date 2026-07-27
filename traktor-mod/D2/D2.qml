@@ -11,19 +11,14 @@ Mapping
 {
   ApiModule {}
 
-  //------------------------------------------------------------------------------------------------------------------
   // LOOP/BEATJUMP SIZE SETTINGS
-  //------------------------------------------------------------------------------------------------------------------
+
   LoopModePads
   {
     name: "loop_mode_pads"
     loopSizePath: "mapping.settings.pad_loop_size" 
     beatJumpPath: "mapping.settings.pad_jump_size" 
   }
-
-  //------------------------------------------------------------------------------------------------------------------
-  //
-  //------------------------------------------------------------------------------------------------------------------
 
   // Settings - MIDI Controls
   MappingPropertyDescriptor { id: useMIDIControls;                  path: "mapping.settings.use_midi_controls";                  type: MappingPropertyDescriptor.Boolean;    value: false }
@@ -40,10 +35,7 @@ Mapping
   MappingPropertyDescriptor { path: "mapping.settings.touchstrip_scratch_sensitivity";     type: MappingPropertyDescriptor.Float;      value: 50.0;   min: 0.0; max: 100.0; }
   MappingPropertyDescriptor { path: "mapping.settings.touchstrip_scratch_invert";          type: MappingPropertyDescriptor.Boolean;    value: true;  }
 
-  //------------------------------------------------------------------------------------------------------------------
-  // CROSS-DISPLAY INTERACTION
-  // Browser should be open on one display only
-  //------------------------------------------------------------------------------------------------------------------
+  // CROSS-DISPLAY INTERACTION: Browser should be open on one display only
 
   /*
   property bool leftScreenViewValue: left.screenView.value
@@ -64,24 +56,15 @@ Mapping
       left.screenView.value = ScreenView.deck;
     }
   }
-  */
-
-  //------------------------------------------------------------------------------------------------------------------
 
   onMappingLoaded:
   {
     deck.initializeModule();
   }
 
-  //------------------------------------------------------------------------------------------------------------------
-  //
-  //------------------------------------------------------------------------------------------------------------------
-
   D2 { name: "surface" }
 
-  //------------------------------------------------------------------------------------------------------------------
   //  LED Brightness wiring
-  //------------------------------------------------------------------------------------------------------------------
 
   MappingPropertyDescriptor { path: "mapping.settings.led_on_brightness";      type: MappingPropertyDescriptor.Integer;   value: 100; min: 50; max: 100 }
   MappingPropertyDescriptor { path: "mapping.settings.led_dimmed_percentage";  type: MappingPropertyDescriptor.Integer;   value: 25;  min: 25; max: 50  }
@@ -91,8 +74,6 @@ Mapping
 
   Wire { from: "surface.led_on_brightness.write";      to: "LEDBrightnessOn.read"     }
   Wire { from: "surface.led_dimmed_brightness.write";  to: "LEDDimmedPercentage.read" }
-
-  //------------------------------------------------------------------------------------------------------------------
 
   Deck_S8Style
   {
@@ -105,9 +86,7 @@ Mapping
     decksAssignment: decksAssignment.value
   }
  
-  //------------------------------------------------------------------------------------------------------------------
   // Decks Assignment / Deck focus
-  //------------------------------------------------------------------------------------------------------------------
 
   property bool isInDecksAssignmentMode: false
   property bool triggerDeckFocusSwitch:  true
@@ -198,9 +177,7 @@ Mapping
     }
   }
 
-  //------------------------------------------------------------------------------------------------------------------
-  // Fx Assignment
-  //------------------------------------------------------------------------------------------------------------------
+  // FX Assignment
 
   AppProperty { id: fxMode; path: "app.traktor.fx.4fx_units" }
 
@@ -252,4 +229,6 @@ Mapping
       }
     }
   }
-} //Mapping
+} 
+
+// Mapping
