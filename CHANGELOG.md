@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.10.1] - 2026-07-27
+
+### Fixed
+
+- `track.musicalKey` was always `null` on live decks. It was the only field on the `deckLoaded` route coerced with the strict numeric helper, which rejects strings, while Traktor's QML sends `content.musical_key` as a string. Every other number on that route (`bpm`, `tempo`, `trackLength`, `elapsedTime`) already used the lenient helper for exactly this reason. Tests posted an integer, so they passed while real decks reported no key at all. Consumers fell back to `keyText`, which comes from `content.legacy_key` and is not dependably populated, leaving them with no key for the playing track.
+
 ## [0.10.0] - 2026-07-26
 
 ### Added

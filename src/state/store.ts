@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events';
-import { bool, clamp01, num, numStrict, str } from './coerce.js';
+import { bool, clamp01, num, str } from './coerce.js';
 import { trackKeyFor } from './track-key.js';
 
 export type DeckId = 'A' | 'B' | 'C' | 'D';
@@ -227,7 +227,10 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
       tempo: num(payload.tempo),
       resultingKey: str(payload.resultingKey),
       keyText: str(payload.keyText),
-      musicalKey: numStrict(payload.key),
+      // Lenient like every other number on this route: Traktor's QML sends
+      // some values as strings, and the strict variant silently dropped the
+      // key on live decks while passing in tests that posted an integer.
+      musicalKey: num(payload.key),
       trackLength: num(payload.trackLength),
     };
     d.loadId = this.nextLoadId++;

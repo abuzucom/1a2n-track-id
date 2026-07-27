@@ -232,6 +232,11 @@ describe('TrackerStore', () => {
     expect(store.snapshot().decks.A.track?.musicalKey).toBe(13);
   });
 
+  it('accepts a numeric-string musical key, as live Traktor sends it', () => {
+    store.deckLoaded('A', { title: 'Keyed', key: '13', keyText: '' });
+    expect(store.snapshot().decks.A.track?.musicalKey).toBe(13);
+  });
+
   it('leaves musicalKey null when absent or not a number', () => {
     store.deckLoaded('A', { title: 'No key' });
     expect(store.snapshot().decks.A.track?.musicalKey).toBeNull();
