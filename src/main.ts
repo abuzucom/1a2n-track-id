@@ -38,13 +38,18 @@ store.on('change', (snap) => {
     const track = snap.decks[deckId].track;
     if (!track || !track.filePath || track.artUrl !== undefined) continue;
     const filePath = track.filePath;
-    void resolver.resolve(filePath).then((art) => {
-      // Deck may have been reloaded while we parsed the file.
-      const current = store.snapshot().decks[deckId].track;
-      if (art && current?.filePath === filePath) {
-        store.setDeckArt(deckId, `/art/${resolver.idFor(filePath)}`);
-      }
-    });
+    void resolver
+      .resolve(filePath)
+      .then((art) => {
+        // Deck may have been reloaded while we parsed the file.
+        const current = store.snapshot().decks[deckId].track;
+        if (art && current?.filePath === filePath) {
+          store.setDeckArt(deckId, `/art/${resolver.idFor(filePath)}`);
+        }
+      })
+      // Without this an unhandled rejection here takes the whole server down
+      // mid-set. Cover art is decoration; losing it must not stop the show.
+      .catch((err) => console.error(`cover art lookup failed for deck ${deckId}:`, err));
   }
 });
 

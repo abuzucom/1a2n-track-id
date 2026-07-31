@@ -2,6 +2,27 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.11.0] - 2026-07-31
+
+### Security
+
+- Every route, including the `/ws` upgrade, now requires a `Host` header naming the loopback interface and answers `403 {"error":"forbidden host"}` otherwise. Binding to `127.0.0.1` keeps other machines out but is not an origin boundary for a browser: a page can point a name it controls at `127.0.0.1` (DNS rebinding) and reach this server as same-origin, which bypasses CORS and the existing `/ws` origin check alike, because by then the origin genuinely is the attacker's own name. That gave any page the DJ visited mid-set the ability to read `/state` and to POST deck payloads onto a live overlay. The QML mod posts to `localhost:8080` and OBS loads `127.0.0.1:8080`, so both are unaffected. The `/ws` check is applied separately because the upgrade is served off the raw http server and never reaches Fastify's hooks.
+- The cover-art resolver now opens a file only when its extension is a known audio type and `stat()` reports a regular file. The path it receives arrives in a POST body, so it was chosen by whoever sent the payload rather than by Traktor, which made the parser a file-existence oracle for any path on disk and, for anything with parseable embedded art, a way to read those bytes back out through `/art/<id>`.
+- `/art/<id>` no longer echoes a content type taken from the track file. The value comes from the file's own picture frame, so a crafted track could name an active type and have this server serve it from its own origin. Types are normalized and restricted to `image/jpeg`, `image/png`, `image/gif`, and `image/webp`; anything else is treated as no art at all.
+- Added `X-Content-Type-Options: nosniff` to every response, and a Content-Security-Policy to the overlay page. The overlay was already self-contained (no external requests, no `innerHTML`), so the policy only writes that down.
+- `/updateDeck/:deck` logged `isPlaying` straight from the unvalidated body, so a string containing newlines could forge log lines. It is coerced before logging now, matching what `/deckLoaded/:deck` already did for the title.
+
+### Fixed
+
+- The cover-art parse timeout now stops the parse instead of only stopping the wait. `music-metadata` takes no `AbortSignal`, so the read stream is owned here and destroyed when the timer fires; previously a `Promise.race` left the parse running against a file that might never end, and repeated attempts stacked up.
+- The cover-art cache is bounded by total bytes (64 MiB by default) as well as entry count. 200 entries of multi-megabyte album art could pin hundreds of megabytes on a machine already running Traktor and OBS. A cover too large to ever fit is recorded as a miss rather than evicting the cache for room it will not get.
+- History is written to a temp file and renamed over the target, so a crash mid-write leaves the previous session intact. A truncated file was silently discarded as unparseable on load, which is exactly the case `--resume` exists for. Overlapping saves are also serialized, and one failed save no longer rejects the saves queued behind it.
+- A failed cover-art lookup can no longer take the server down mid-set. The resolver promise had no rejection handler, so a throw became an unhandled rejection and terminated the process.
+
+### Changed
+
+- `docs/state-api.md` now states that `trackKey` is not an anonymizer. It is an unsalted hash of a low-entropy path, and the same snapshot carries the artist and title that make up most of that path, so a `trackKey` confirms a guessed path (username included) by offline hashing. The derivation is unchanged: `docs/state-api.md` tells consumers to reproduce it, and salting would break that contract.
+
 ## [0.10.1] - 2026-07-27
 
 ### Fixed

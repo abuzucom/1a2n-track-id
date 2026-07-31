@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -42,6 +42,54 @@ describe('HistoryFile', () => {
     await hf.save([entry('One'), entry('Two')]);
     const loaded = await new HistoryFile(file).load();
     expect(loaded.map((e) => e.title)).toEqual(['One', 'Two']);
+  });
+
+  // A crash mid-write is exactly the case --resume exists for, so a partially
+  // written file must never be what --resume finds.
+  it('keeps the committed session intact when a write fails', async () => {
+    const file = join(dir, 'session.json');
+    const hf = new HistoryFile(file);
+    await hf.save([entry('Committed')]);
+
+    // Block the temp path with a directory so the write genuinely fails on
+    // the real filesystem rather than through a mock.
+    await mkdir(`${file}.tmp`);
+    await expect(hf.save([entry('Lost')])).rejects.toThrow();
+
+    // The previously committed session is still there and still loadable.
+    expect((await new HistoryFile(file).load()).map((e) => e.title)).toEqual(['Committed']);
+  });
+
+  it('keeps accepting saves after one fails', async () => {
+    const file = join(dir, 'session.json');
+    const hf = new HistoryFile(file);
+
+    const blocked = `${file}.tmp`;
+    await mkdir(blocked);
+    await expect(hf.save([entry('Lost')])).rejects.toThrow();
+    await rm(blocked, { recursive: true });
+
+    // A failed save must not poison the queue every later save waits on.
+    await hf.save([entry('Recovered')]);
+    expect((await new HistoryFile(file).load()).map((e) => e.title)).toEqual(['Recovered']);
+  });
+
+  it('does not leave temp files next to the session file', async () => {
+    const file = join(dir, 'session.json');
+    await new HistoryFile(file).save([entry('One')]);
+    expect((await readdir(dir)).filter((n) => n.endsWith('.tmp'))).toEqual([]);
+  });
+
+  it('serializes overlapping saves so the last one wins', async () => {
+    const file = join(dir, 'session.json');
+    const hf = new HistoryFile(file);
+    await Promise.all([
+      hf.save([entry('First')]),
+      hf.save([entry('Second')]),
+      hf.save([entry('Third')]),
+    ]);
+    const loaded = await new HistoryFile(file).load();
+    expect(loaded.map((e) => e.title)).toEqual(['Third']);
   });
 
   it('loads a pre-0.10.0 file, defaulting the fields it predates', async () => {

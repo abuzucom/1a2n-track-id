@@ -2,10 +2,32 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
+import { bool } from '../state/coerce.js';
 import { isDeckId, toClientSnapshot, type TrackerStore } from '../state/store.js';
+import { isLoopbackHost } from './host-guard.js';
 import type { CoverArtResolver } from '../covers/resolver.js';
 
 const PUBLIC_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', '..', 'public');
+
+/**
+ * The overlay is entirely self-contained: no external requests, one bundled
+ * script, one inline <style> block, art fetched from this origin. 'unsafe-inline'
+ * covers only that style block; scripts stay locked to same-origin files.
+ * ws: is listed explicitly because CSP3's 'self' does not extend to the
+ * WebSocket scheme in older engines, and OBS embeds an older CEF.
+ */
+const OVERLAY_CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data:",
+  "font-src 'self'",
+  "connect-src 'self' ws://127.0.0.1:* ws://localhost:*",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'none'",
+  "frame-ancestors 'none'",
+].join('; ');
 
 const FONT_FILES = [
   'libre-franklin-400.woff2',
@@ -16,8 +38,8 @@ const FONT_FILES = [
 ];
 
 // Fixed allowlist of static files; nothing user-supplied ever touches a path.
-const STATIC_FILES: Record<string, { file: string; type: string }> = {
-  '/overlay': { file: 'index.html', type: 'text/html; charset=utf-8' },
+const STATIC_FILES: Record<string, { file: string; type: string; csp?: string }> = {
+  '/overlay': { file: 'index.html', type: 'text/html; charset=utf-8', csp: OVERLAY_CSP },
   '/overlay.js': { file: 'overlay.js', type: 'text/javascript; charset=utf-8' },
   ...Object.fromEntries(
     FONT_FILES.map((f) => [`/fonts/${f}`, { file: join('fonts', f), type: 'font/woff2' }]),
@@ -37,6 +59,17 @@ function asBody(v: unknown): Record<string, unknown> | null {
 
 export function buildApp({ store, resolver }: AppOptions): App {
   const app = Fastify({ logger: false });
+
+  // Rejected on onRequest, before the body is parsed, so a foreign host
+  // cannot even make us read its payload.
+  app.addHook('onRequest', (req, reply, done) => {
+    reply.header('x-content-type-options', 'nosniff');
+    if (!isLoopbackHost(req.headers.host)) {
+      void reply.code(403).send({ error: 'forbidden host' });
+      return;
+    }
+    done();
+  });
 
   // The simulator tags its payloads. Real (untagged) Traktor data purges any
   // simulated state first, so demo tracks can never linger into a live set.
@@ -66,7 +99,9 @@ export function buildApp({ store, resolver }: AppOptions): App {
   app.post<{ Params: { deck: string } }>('/updateDeck/:deck', async (req, reply) => {
     const body = asBody(req.body);
     if (!isDeckId(req.params.deck) || !body) return reply.code(400).send({ error: 'bad request' });
-    if ('isPlaying' in body) console.log(`traktor: deck ${req.params.deck} isPlaying=${String(body.isPlaying)}`);
+    // Coerced, not stringified: the raw value is unvalidated JSON and a
+    // string with newlines in it would otherwise forge log lines.
+    if ('isPlaying' in body) console.log(`traktor: deck ${req.params.deck} isPlaying=${bool(body.isPlaying)}`);
     store.updateDeck(req.params.deck, body);
     return { ok: true };
   });
@@ -104,10 +139,11 @@ export function buildApp({ store, resolver }: AppOptions): App {
     return reply.type(art.mime).send(art.data);
   });
 
-  for (const [route, { file, type }] of Object.entries(STATIC_FILES)) {
+  for (const [route, { file, type, csp }] of Object.entries(STATIC_FILES)) {
     app.get(route, async (_req, reply) => {
       try {
         const content = await readFile(join(PUBLIC_DIR, file));
+        if (csp) reply.header('content-security-policy', csp);
         return reply.type(type).send(content);
       } catch (err) {
         if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {

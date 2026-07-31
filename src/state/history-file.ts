@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { numStrict, str } from './coerce.js';
 import { isDeckId, type DeckId, type HistoryEntry } from './store.js';
@@ -39,6 +39,13 @@ function sanitizeEntry(v: unknown): HistoryEntry | null {
 
 /** Persists the session's track history as a JSON file. */
 export class HistoryFile {
+  /**
+   * Saves run one at a time. The server fires save() on every history change
+   * without awaiting it, and two overlapping writes would otherwise race for
+   * the same temp path and interleave.
+   */
+  private writeChain: Promise<unknown> = Promise.resolve();
+
   constructor(private readonly filePath: string) {}
 
   async load(): Promise<HistoryEntry[]> {
@@ -52,8 +59,30 @@ export class HistoryFile {
     }
   }
 
-  async save(entries: HistoryEntry[]): Promise<void> {
+  save(entries: HistoryEntry[]): Promise<void> {
+    // settled(), not the chain itself: one failed save must not reject every
+    // save queued behind it.
+    const settled = this.writeChain.catch(() => undefined);
+    const run = settled.then(() => this.writeAtomically(entries));
+    this.writeChain = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * Write to a temp file, then rename over the target. rename() is atomic
+   * within a directory, so a crash mid-write leaves the previous session
+   * intact instead of a truncated file that --resume would silently discard
+   * as unparseable, which is the case --resume exists for.
+   */
+  private async writeAtomically(entries: HistoryEntry[]): Promise<void> {
     await mkdir(dirname(this.filePath), { recursive: true });
-    await writeFile(this.filePath, JSON.stringify(entries, null, 2), 'utf8');
+    const tempPath = `${this.filePath}.tmp`;
+    try {
+      await writeFile(tempPath, JSON.stringify(entries, null, 2), 'utf8');
+      await rename(tempPath, this.filePath);
+    } catch (err) {
+      await rm(tempPath, { force: true }).catch(() => undefined);
+      throw err;
+    }
   }
 }
