@@ -216,4 +216,122 @@ describe('ingest routes', () => {
     });
     expect(res.statusCode).toBe(400);
   });
+
+  it('does not let unvalidated payload text forge log lines', async () => {
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    try {
+      await app.inject({
+        method: 'POST',
+        url: '/updateDeck/A',
+        payload: { isPlaying: 'true\ntraktor: deck B loaded: Forged' },
+      });
+      for (const call of logSpy.mock.calls) {
+        expect(String(call.join(' '))).not.toContain('\n');
+      }
+    } finally {
+      logSpy.mockRestore();
+    }
+  });
+});
+
+describe('host guard', () => {
+  let store: TrackerStore;
+  let app: App;
+
+  beforeEach(async () => {
+    store = new TrackerStore({ historyDebounceMs: 0 });
+    app = buildApp({ store });
+    await app.ready();
+  });
+  afterEach(async () => {
+    await app.close();
+    store.dispose();
+  });
+
+  // Binding to 127.0.0.1 does not stop a browser: a page can point a name it
+  // controls at 127.0.0.1 (DNS rebinding) and reach this server as
+  // same-origin, bypassing CORS and the /ws origin check alike. The Host
+  // header still names the attacker, so it is the thing worth checking.
+  it('rejects reads from a rebound foreign host', async () => {
+    const res = await app.inject({
+      method: 'GET',
+      url: '/state',
+      headers: { host: 'evil.com:8080' },
+    });
+    expect(res.statusCode).toBe(403);
+    expect(res.json()).toEqual({ error: 'forbidden host' });
+  });
+
+  it('rejects ingest from a rebound foreign host without touching the store', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/deckLoaded/A',
+      payload: { title: 'Injected onto a live stream' },
+      headers: { host: 'evil.com:8080' },
+    });
+    expect(res.statusCode).toBe(403);
+
+    const state = await app.inject({ method: 'GET', url: '/state', headers: { host: '127.0.0.1:8080' } });
+    expect(state.json().decks.A.track).toBeNull();
+  });
+
+  it('allows the loopback names the QML mod and OBS actually use', async () => {
+    for (const host of ['127.0.0.1:8080', 'localhost:8080', '[::1]:8080']) {
+      const res = await app.inject({ method: 'GET', url: '/state', headers: { host } });
+      expect(res.statusCode).toBe(200);
+    }
+  });
+});
+
+describe('response hardening', () => {
+  let store: TrackerStore;
+  let app: App;
+  let resolver: CoverArtResolver;
+
+  beforeEach(async () => {
+    store = new TrackerStore({ historyDebounceMs: 0 });
+    resolver = new CoverArtResolver();
+    app = buildApp({ store, resolver });
+    await app.ready();
+  });
+  afterEach(async () => {
+    await app.close();
+    store.dispose();
+  });
+
+  it('sends nosniff on every response', async () => {
+    const state = await app.inject({ method: 'GET', url: '/state' });
+    expect(state.headers['x-content-type-options']).toBe('nosniff');
+    const page = await app.inject({ method: 'GET', url: '/overlay' });
+    expect(page.headers['x-content-type-options']).toBe('nosniff');
+  });
+
+  it('sends a content security policy on the overlay page', async () => {
+    const page = await app.inject({ method: 'GET', url: '/overlay' });
+    const csp = String(page.headers['content-security-policy'] ?? '');
+    expect(csp).toContain("default-src 'self'");
+    expect(csp).toContain("object-src 'none'");
+    expect(csp).toContain("frame-ancestors 'none'");
+  });
+
+  it('never serves a file-supplied content type outside the image allowlist', async () => {
+    const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
+    const { tmpdir } = await import('node:os');
+    const { join } = await import('node:path');
+    const { mp3WithCover } = await import('../covers/test-fixtures.js');
+
+    const dir = await mkdtemp(join(tmpdir(), 'artmime-'));
+    try {
+      // A crafted track declares an active content type in its APIC frame.
+      // Serving that back from our own origin is the bug.
+      const file = join(dir, 'crafted.mp3');
+      await writeFile(file, mp3WithCover('text/html'));
+      expect(await resolver.resolve(file)).toBeNull();
+
+      const res = await app.inject({ method: 'GET', url: `/art/${resolver.idFor(file)}` });
+      expect(res.statusCode).toBe(404);
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

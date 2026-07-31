@@ -1,7 +1,8 @@
 import { EventEmitter } from 'node:events';
-import type { Server } from 'node:http';
+import type { IncomingMessage, Server } from 'node:http';
 import { WebSocketServer, WebSocket } from 'ws';
 import { toClientSnapshot, type Snapshot, type TrackerStore } from '../state/store.js';
+import { isLoopbackHost } from './host-guard.js';
 
 const LOCAL_HOSTNAMES = new Set(['127.0.0.1', 'localhost', '[::1]', '::1']);
 
@@ -28,7 +29,10 @@ export class WsHub extends EventEmitter<{ clients: [number] }> {
     this.wss = new WebSocketServer({
       server,
       path: '/ws',
-      verifyClient: ({ origin }: { origin?: string }) => isAllowedOrigin(origin),
+      // The upgrade is served off the raw http server, so Fastify's own
+      // onRequest host guard never sees it; both checks are applied here.
+      verifyClient: ({ req }: { req: IncomingMessage }) =>
+        isLoopbackHost(req.headers.host) && isAllowedOrigin(req.headers.origin),
     });
     // Without a handler the wss re-emits http server errors (e.g. EADDRINUSE)
     // as unhandled 'error' events and crashes the process with a stack dump.

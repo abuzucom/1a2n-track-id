@@ -49,6 +49,15 @@ describe('WebSocket hub', () => {
     ws.close();
   });
 
+  // The upgrade is handled by the ws server on the raw http server, so it
+  // never passes through Fastify's hooks. The host check has to be repeated
+  // here or /ws is the one route a rebound name can still reach.
+  it('rejects connections whose Host is not loopback', async () => {
+    const ws = new WebSocket(url, { headers: { host: 'evil.com' } });
+    const [err] = (await once(ws, 'error')) as [Error];
+    expect(String(err.message)).toMatch(/401|403/);
+  });
+
   it('rejects connections from non-local web origins', async () => {
     const ws = new WebSocket(url, { headers: { origin: 'https://evil.example' } });
     const [err] = await once(ws, 'error');
