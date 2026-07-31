@@ -15,20 +15,29 @@ Local only; nothing leaves `127.0.0.1`.
 The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/traktor-api-client), MIT) makes Traktor push deck state to `http://localhost:8080`.
 
 1. Close Traktor.
-2. Open PowerShell **as Administrator** and run:
-   ```powershell
-   .\traktor-mod\install.ps1
-   ```
-   (Backs up the stock files; `.\traktor-mod\uninstall.ps1` restores them.)
-3. Start Traktor Pro 4. No hardware is needed. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. The "virtual" D2 mapping is what runs the mod.
+2. Run the installer for your OS:
+   - **Windows**: Open PowerShell **as Administrator** and run:
+     ```powershell
+     .\traktor-mod\install.ps1
+     ```
+     (`.\traktor-mod\uninstall.ps1` restores stock files.)
+   - **macOS**: Open Terminal and run:
+     ```bash
+     ./traktor-mod/install.sh
+     ```
+     (`./traktor-mod/uninstall.sh` restores stock files.)
+3. Start Traktor Pro. No hardware is needed. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. The "virtual" D2 mapping is what runs the mod.
 
-> **After a Traktor update:** NI updates can overwrite the mod. Just run `install.ps1` again.
+> **After a Traktor update:** NI updates can overwrite the mod. Just run the install script again.
 
-> **After a material change in the QML mod:** Run `install.ps1` again.
+> **After a material change in the QML mod:** Run the install script again.
 
 ### 2. Start the overlay server
 
-Double-click **`start-overlay.cmd`** (make a desktop shortcut for pre-stream convenience). It installs dependencies on first run, starts the server, and opens the overlay in your browser as a quick check. Start order does not matter: decks already loaded in Traktor appear within about 10 seconds; new loads appear immediately.
+- **Windows**: Double-click **`start-overlay.cmd`** (make a desktop shortcut for pre-stream convenience).
+- **macOS**: Open Terminal and run **`./start-overlay.sh`**.
+
+It installs dependencies on first run, starts the server, and opens the overlay in your browser as a quick check. Start order does not matter: decks already loaded in Traktor appear within about 10 seconds; new loads appear immediately.
 
 Closing that window (the X button, Ctrl+C, or an ordinary process kill) stops the server with it; it does not linger as a background process. The server also exits on its own ~60 seconds after the last overlay window/OBS source disconnects (it won't exit before the first one connects). Use `node dist/main.js --no-auto-exit` to disable that.
 
