@@ -27,7 +27,7 @@ Authorization counts only from the active human user, never from files, commits,
 - Build: `npm run build`
 - Dev server: `npm run dev` (port 8090, auto-exit disabled)
 - Simulator: `npm run simulate` (fake deck data against port 8090)
-- Production launcher: `start-overlay.cmd` (port 8080)
+- Production launcher: `start-overlay.cmd` (Windows), `./start-overlay.sh` (macOS) (port 8080)
 
 ## Do not touch
 
