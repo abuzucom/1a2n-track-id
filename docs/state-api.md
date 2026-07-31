@@ -14,6 +14,15 @@ added alongside them. `schemaVersion` bumps only on a breaking change.
 Returns the current snapshot as JSON, `200 OK`, no auth (server binds to
 `127.0.0.1` only).
 
+Requests whose `Host` header does not name the loopback interface
+(`127.0.0.1`, `localhost`, or `[::1]`, with or without a port) are refused
+with `403 {"error":"forbidden host"}`. This applies to every route,
+including the `/ws` upgrade. Binding to `127.0.0.1` keeps other machines
+out, but it does not stop a web page from pointing a name it controls at
+`127.0.0.1` and reaching this server as same-origin; the `Host` header is
+what still distinguishes the two. A consumer running on the same machine
+and addressing the server as `127.0.0.1` or `localhost` needs no change.
+
 ```
 GET http://127.0.0.1:8080/state
 ```
@@ -100,9 +109,18 @@ streamed tracks, so exactly one of the two identifies any given track.
 `trackKey` is a stable opaque id for a local track, the first 16 hex
 characters of the SHA-256 of its absolute path. It exists so a consumer can
 join a playing deck to its own library index without this server ever
-emitting a file path, which would leak the username. Hash a local path the
-same way to match. It is `''` for streamed tracks, which carry `streamingId`
-instead, so between the two every track has exactly one identifier.
+emitting a file path. Hash a local path the same way to match. It is `''`
+for streamed tracks, which carry `streamingId` instead, so between the two
+every track has exactly one identifier.
+
+> **`trackKey` is not an anonymizer.** It is an unsalted hash of a
+> low-entropy, highly structured string, and the same snapshot publishes the
+> artist and title that make up most of that string. Anyone holding a
+> `trackKey` can confirm a guessed path, including the username in it, by
+> hashing candidates offline. Treat it as an identifier, not as a way to
+> withhold the path. Salting it would fix that but would also break the
+> "hash a local path the same way to match" contract above, so it is left
+> as-is and documented rather than changed silently.
 
 Local file paths are never included in a `ClientSnapshot` (they are stripped
 server-side before this shape is built).

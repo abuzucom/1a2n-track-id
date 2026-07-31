@@ -60,7 +60,11 @@ Themes: the page ground defaults to dark (Pitch). The top-right toggle cycles da
 
 ## Privacy
 
-The server binds to `127.0.0.1` only. WebSocket connections from non-local web origins are rejected, and client-facing state never includes local file paths. Fonts are self-hosted; the overlay makes no external requests.
+The server binds to `127.0.0.1` only, and every route requires a `Host` header naming the loopback interface. That second check matters: binding to `127.0.0.1` stops other machines, but not a web page you happen to visit mid-set, which can point a hostname it controls at `127.0.0.1` and reach the server as same-origin. Requests carrying any other host get `403`. Addressing the server as `127.0.0.1` or `localhost`, as the Traktor mod and OBS both do, needs no change.
+
+WebSocket connections from non-local web origins are rejected, and client-facing state never includes local file paths. Cover art is read only from real audio files and served only as an image type. Fonts are self-hosted; the overlay makes no external requests and runs under a Content-Security-Policy that says so.
+
+`trackKey` is an identifier, not an anonymizer: it is an unsalted hash of a file path, so it can confirm a guessed path offline. See [docs/state-api.md](docs/state-api.md).
 
 ## How it decides what's "on air"
 
