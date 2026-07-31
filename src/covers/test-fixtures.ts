@@ -25,11 +25,15 @@ function frame(id: string, body: Buffer): Buffer {
   return Buffer.concat([header, body]);
 }
 
-/** Minimal MP3: ID3v2.3 tag with one APIC (cover) frame containing PNG_1X1. */
-export function mp3WithCover(): Buffer {
+/**
+ * Minimal MP3: ID3v2.3 tag with one APIC (cover) frame containing PNG_1X1.
+ * The declared type is caller-settable so tests can build the crafted-track
+ * case, where the frame names a type the server must refuse to echo back.
+ */
+export function mp3WithCover(mime = 'image/png'): Buffer {
   const body = Buffer.concat([
     Buffer.from([0]),
-    Buffer.from('image/png\0', 'latin1'),
+    Buffer.from(`${mime}\0`, 'latin1'),
     Buffer.from([3]), // picture type: front cover
     Buffer.from([0]), // empty description
     PNG_1X1,
