@@ -96,12 +96,15 @@ export class CoverArtResolver {
       // into an unbounded read.
       if (!stats.isFile() || stats.size > this.maxFileSizeBytes) return null;
       return await this.parseWithTimeout(filePath, stats.size);
-    } catch {
+    } catch (err) {
       // Missing, unreadable, timed out, or not really an audio file. All are
       // ordinary for a live library, and the caller caches the miss so a
       // broken file is not reopened on every snapshot. The path is not
       // logged: it is the username-bearing string the rest of this server
       // takes care never to emit.
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.warn('cover art read/parse failed for a track (path redacted):', (err as Error).name);
+      }
       return null;
     }
   }

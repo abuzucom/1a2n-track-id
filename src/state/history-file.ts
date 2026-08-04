@@ -4,15 +4,15 @@ import { numStrict, str } from './coerce.js';
 import { isDeckId, type DeckId, type HistoryEntry } from './store.js';
 
 /** Deck ids from a pre-0.10.0 file are absent; anything unrecognized is null. */
-function deckOrNull(v: unknown): DeckId | null {
-  const raw = str(v);
+function deckOrNull(value: unknown): DeckId | null {
+  const raw = str(value);
   return isDeckId(raw) ? raw : null;
 }
 
 /** Coerce one persisted entry to a valid shape; the file is not trusted input. */
-function sanitizeEntry(v: unknown): HistoryEntry | null {
-  if (typeof v !== 'object' || v === null || Array.isArray(v)) return null;
-  const raw = v as Record<string, unknown>;
+function sanitizeEntry(value: unknown): HistoryEntry | null {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return null;
+  const raw = value as Record<string, unknown>;
   return {
     title: str(raw.title),
     artist: str(raw.artist),
@@ -54,7 +54,10 @@ export class HistoryFile {
       const parsed: unknown = JSON.parse(raw);
       if (!Array.isArray(parsed)) return [];
       return parsed.map(sanitizeEntry).filter((e): e is HistoryEntry => e !== null);
-    } catch {
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+        console.error('history file read/parse failed, ignoring:', err);
+      }
       return [];
     }
   }

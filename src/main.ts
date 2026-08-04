@@ -69,6 +69,7 @@ hub.on('clients', (n) => {
   auto.clientsChanged(n);
 });
 
+/** Shut down the HTTP server and exit with the specified code. */
 async function shutdown(code: number): Promise<void> {
   auto.dispose();
   hub.close();

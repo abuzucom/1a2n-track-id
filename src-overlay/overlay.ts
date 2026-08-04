@@ -18,6 +18,7 @@ const THEME_KEY = 'trackid-theme';
 const WS_RECONNECT_DELAY_MS = 2000;
 const HISTORY_DISPLAY_LIMIT = 10;
 
+/** Read the last selected theme from localStorage, or null if unset/unavailable. */
 function readStoredTheme(): string | null {
   try {
     return localStorage.getItem(THEME_KEY);
@@ -27,6 +28,7 @@ function readStoredTheme(): string | null {
   }
 }
 
+/** Save the selected theme to localStorage, if available. */
 function storeTheme(theme: string): void {
   try {
     localStorage.setItem(THEME_KEY, theme);
@@ -124,6 +126,7 @@ const params = new URLSearchParams(location.search);
 const view = params.get('view') ?? 'all';
 document.body.dataset.view = ['now', 'decks', 'history', 'all'].includes(view) ? view : 'all';
 
+/** Resolve the active theme from the URL or storage and bind the UI toggle button. */
 function initTheme(): void {
   const theme = resolveTheme(params.get('theme'), readStoredTheme());
   document.body.dataset.theme = theme;
@@ -187,6 +190,7 @@ interface HeroSlot {
   key: string;
 }
 
+/** Construct the DOM elements for one hero deck slot (the large view when a deck is on-air). */
 function buildHeroSlot(): HeroSlot {
   const row = el('div', 'hero card', heroesBox);
   const art = el('img', 'art', row);
@@ -201,6 +205,7 @@ function buildHeroSlot(): HeroSlot {
 }
 const heroSlots = DECKS.map(buildHeroSlot);
 
+/** Populate a hero slot with the state of a playing, on-air deck. */
 function fillHeroSlot(ui: HeroSlot, deck: Deck): void {
   if (!deck.track) return;
   const key = `${deck.track.artist} ${deck.track.title}`;
@@ -218,6 +223,7 @@ function fillHeroSlot(ui: HeroSlot, deck: Deck): void {
   ui.row.classList.add('visible');
 }
 
+/** Update all hero slots to match the current snapshot's on-air decks. */
 function renderHeroes(snap: Snapshot): void {
   DECKS.forEach((id, i) => {
     const ui = heroSlots[i];
@@ -231,6 +237,7 @@ function renderHeroes(snap: Snapshot): void {
 // --- deck cards ------------------------------------------------------------------
 type DeckCardUi = (typeof deckEls)[number];
 
+/** Update a small deck card to match the deck's current state and harmonic compatibility. */
 function renderDeckCard(
   ui: DeckCardUi,
   deck: Deck,
@@ -275,6 +282,7 @@ function renderDeckCard(
   }
 }
 
+/** Update all deck cards to match the current snapshot. */
 function renderDecks(snap: Snapshot): void {
   const masterId = masterOnAirDeckId(snap);
   const masterTrack = masterId ? snap.decks[masterId].track : null;
@@ -290,6 +298,7 @@ function renderDecks(snap: Snapshot): void {
 // --- history ----------------------------------------------------------------------
 let lastHistoryLen = -1;
 
+/** Update the recently-played track history list. */
 function renderHistory(snap: Snapshot): void {
   if (snap.history.length === lastHistoryLen) return;
   lastHistoryLen = snap.history.length;
@@ -308,6 +317,7 @@ function renderHistory(snap: Snapshot): void {
   historyBox.style.display = snap.history.length ? '' : 'none';
 }
 
+/** Update the entire overlay DOM to reflect the new state snapshot. */
 function render(snap: Snapshot): void {
   renderHeroes(snap);
   renderDecks(snap);
@@ -315,6 +325,7 @@ function render(snap: Snapshot): void {
 }
 
 // --- websocket with reconnect --------------------------------------------------------
+/** Connect to the WebSocket state stream, rendering updates and reconnecting on drop. */
 function connect(): void {
   const ws = new WebSocket(`ws://${location.host}/ws`);
   ws.onmessage = (ev) => {

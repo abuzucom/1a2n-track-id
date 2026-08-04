@@ -145,6 +145,7 @@ interface StoreOptions {
   maxHistory?: number;
 }
 
+/** Returns a clean, empty deck state for initialization or resetting. */
 function emptyDeck(): DeckState {
   return {
     track: null,
@@ -158,6 +159,7 @@ function emptyDeck(): DeckState {
   };
 }
 
+/** Returns a clean, empty mixer state for initialization or resetting. */
 function emptyMixer(): MixerState {
   return {
     channels: [0, 1, 2, 3].map(() => ({
@@ -195,7 +197,7 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
   }
 
   deckLoaded(deck: DeckId, payload: Record<string, unknown>): void {
-    const d = this.deck(deck);
+    const deckState = this.deck(deck);
     // The QML mod re-sends loaded decks periodically so a server started
     // after the track was loaded still converges. An identical track is a
     // refresh: keep loadId (history dedupe), playing state, and art.
@@ -203,15 +205,15 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
     // two different streamed tracks with the same title as a refresh and
     // reuse the load id, which history dedupes on.
     const isRefresh =
-      d.track !== null &&
-      d.track.title === str(payload.title) &&
-      d.track.filePath === str(payload.filePath) &&
-      d.track.streamingId === str(payload.streamingId);
+      deckState.track !== null &&
+      deckState.track.title === str(payload.title) &&
+      deckState.track.filePath === str(payload.filePath) &&
+      deckState.track.streamingId === str(payload.streamingId);
     if (isRefresh) {
       this.emitChange();
       return;
     }
-    d.track = {
+    deckState.track = {
       title: str(payload.title),
       artist: str(payload.artist),
       album: str(payload.album),
@@ -233,24 +235,24 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
       musicalKey: num(payload.key),
       trackLength: num(payload.trackLength),
     };
-    d.loadId = this.nextLoadId++;
-    d.isPlaying = bool(payload.isPlaying);
-    d.isSynced = bool(payload.isSynced);
-    d.elapsedTime = num(payload.elapsedTime) ?? 0;
+    deckState.loadId = this.nextLoadId++;
+    deckState.isPlaying = bool(payload.isPlaying);
+    deckState.isSynced = bool(payload.isSynced);
+    deckState.elapsedTime = num(payload.elapsedTime) ?? 0;
     this.recomputeOnAir(deck);
     this.emitChange();
   }
 
   updateDeck(deck: DeckId, payload: Record<string, unknown>): void {
-    const d = this.deck(deck);
-    if ('isPlaying' in payload) d.isPlaying = bool(payload.isPlaying);
-    if ('isSynced' in payload) d.isSynced = bool(payload.isSynced);
-    if ('isLooping' in payload) d.isLooping = bool(payload.isLooping);
-    if ('isKeyLockOn' in payload) d.isKeyLockOn = bool(payload.isKeyLockOn);
-    if ('elapsedTime' in payload) d.elapsedTime = num(payload.elapsedTime) ?? d.elapsedTime;
-    if (d.track) {
-      if ('tempo' in payload) d.track.tempo = num(payload.tempo);
-      if ('resultingKey' in payload) d.track.resultingKey = str(payload.resultingKey);
+    const deckState = this.deck(deck);
+    if ('isPlaying' in payload) deckState.isPlaying = bool(payload.isPlaying);
+    if ('isSynced' in payload) deckState.isSynced = bool(payload.isSynced);
+    if ('isLooping' in payload) deckState.isLooping = bool(payload.isLooping);
+    if ('isKeyLockOn' in payload) deckState.isKeyLockOn = bool(payload.isKeyLockOn);
+    if ('elapsedTime' in payload) deckState.elapsedTime = num(payload.elapsedTime) ?? deckState.elapsedTime;
+    if (deckState.track) {
+      if ('tempo' in payload) deckState.track.tempo = num(payload.tempo);
+      if ('resultingKey' in payload) deckState.track.resultingKey = str(payload.resultingKey);
     }
     this.recomputeOnAir(deck);
     this.emitChange();
@@ -273,10 +275,10 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
 
   updateMixer(payload: Record<string, unknown>): void {
     const channels = Array.isArray(payload.channels) ? payload.channels : [];
-    channels.slice(0, 4).forEach((ch, i) => {
+    channels.slice(0, 4).forEach((channelPayload, i) => {
       const target = this.mixer.channels[i];
-      if (typeof ch === 'object' && ch !== null && target) {
-        target.level = clamp01((ch as Record<string, unknown>).level);
+      if (typeof channelPayload === 'object' && channelPayload !== null && target) {
+        target.level = clamp01((channelPayload as Record<string, unknown>).level);
       }
     });
     if ('xfader' in payload) this.mixer.xfader = clamp01(payload.xfader);
@@ -294,9 +296,9 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
   }
 
   setDeckArt(deck: DeckId, artUrl: string): void {
-    const d = this.deck(deck);
-    if (!d.track || d.track.artUrl === artUrl) return;
-    d.track.artUrl = artUrl;
+    const deckState = this.deck(deck);
+    if (!deckState.track || deckState.track.artUrl === artUrl) return;
+    deckState.track.artUrl = artUrl;
     this.emitChange();
   }
 
@@ -320,7 +322,7 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
 
   /** Clear all decks, history, and master clock (e.g. purge simulated data). */
   reset(): void {
-    for (const t of this.pendingHistory.values()) clearTimeout(t);
+    for (const timer of this.pendingHistory.values()) clearTimeout(timer);
     this.pendingHistory.clear();
     this.loggedLoadIds.clear();
     for (const id of DECK_IDS) {
@@ -339,29 +341,29 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
   }
 
   dispose(): void {
-    for (const t of this.pendingHistory.values()) clearTimeout(t);
+    for (const timer of this.pendingHistory.values()) clearTimeout(timer);
     this.pendingHistory.clear();
     this.removeAllListeners();
   }
 
   private deck(deck: DeckId): DeckState {
-    const d = this.decks[deck];
-    if (!d) throw new RangeError(`invalid deck id: ${String(deck)}`);
-    return d;
+    const deckState = this.decks[deck];
+    if (!deckState) throw new RangeError(`invalid deck id: ${String(deck)}`);
+    return deckState;
   }
 
   private recomputeOnAir(deck: DeckId): void {
-    const d = this.deck(deck);
-    const onAir = Boolean(d.track) && d.isPlaying && this.channelOnAir[deck];
-    if (onAir === d.onAir) return;
-    d.onAir = onAir;
+    const deckState = this.deck(deck);
+    const onAir = Boolean(deckState.track) && deckState.isPlaying && this.channelOnAir[deck];
+    if (onAir === deckState.onAir) return;
+    deckState.onAir = onAir;
 
     const pending = this.pendingHistory.get(deck);
     if (pending) {
       clearTimeout(pending);
       this.pendingHistory.delete(deck);
     }
-    if (onAir && d.track && !this.loggedLoadIds.has(this.loadKey(deck))) {
+    if (onAir && deckState.track && !this.loggedLoadIds.has(this.loadKey(deck))) {
       const loadKey = this.loadKey(deck);
       const timer = setTimeout(() => {
         this.pendingHistory.delete(deck);
@@ -376,29 +378,29 @@ export class TrackerStore extends EventEmitter<{ change: [Snapshot] }> {
   }
 
   private commitHistory(deck: DeckId, loadKey: string): void {
-    const d = this.deck(deck);
+    const deckState = this.deck(deck);
     // Deck may have been reloaded while the timer was pending.
-    if (!d.track || !d.onAir || this.loadKey(deck) !== loadKey) return;
+    if (!deckState.track || !deckState.onAir || this.loadKey(deck) !== loadKey) return;
     this.loggedLoadIds.add(loadKey);
     this.history.push({
-      title: d.track.title,
-      artist: d.track.artist,
-      album: d.track.album,
-      label: d.track.label,
-      mix: d.track.mix,
-      filePath: d.track.filePath,
-      bpm: d.track.bpm,
-      resultingKey: d.track.resultingKey,
+      title: deckState.track.title,
+      artist: deckState.track.artist,
+      album: deckState.track.album,
+      label: deckState.track.label,
+      mix: deckState.track.mix,
+      filePath: deckState.track.filePath,
+      bpm: deckState.track.bpm,
+      resultingKey: deckState.track.resultingKey,
       playedAt: new Date().toISOString(),
-      genre: d.track.genre,
-      keyText: d.track.keyText,
-      musicalKey: d.track.musicalKey,
-      trackLength: d.track.trackLength,
-      tempo: d.track.tempo,
-      streamingId: d.track.streamingId,
-      trackKey: d.track.trackKey,
+      genre: deckState.track.genre,
+      keyText: deckState.track.keyText,
+      musicalKey: deckState.track.musicalKey,
+      trackLength: deckState.track.trackLength,
+      tempo: deckState.track.tempo,
+      streamingId: deckState.track.streamingId,
+      trackKey: deckState.track.trackKey,
       deck,
-      loadId: d.loadId,
+      loadId: deckState.loadId,
     });
     if (this.history.length > this.maxHistory) this.history = this.history.slice(-this.maxHistory);
     this.emitChange();
