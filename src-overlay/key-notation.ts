@@ -63,10 +63,12 @@ const CAMELOT_TO_MUSICAL: Readonly<Record<string, string>> = {
 // Traktor's CSI payload has been observed with inconsistent case and
 // surrounding whitespace; normalize before every table lookup so those
 // don't silently miss.
+/** Normalizes an Open Key string (e.g. " 10d ") by trimming and lowercasing it. */
 function normalizeOpenKey(value: string): string {
   return value.trim().toLowerCase();
 }
 
+/** Normalizes a Camelot key string (e.g. " 8a ") by trimming and uppercasing it. */
 function normalizeCamelot(value: string): string {
   return value.trim().toUpperCase();
 }

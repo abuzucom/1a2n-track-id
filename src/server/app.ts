@@ -53,8 +53,9 @@ export interface AppOptions {
   resolver?: CoverArtResolver;
 }
 
-function asBody(v: unknown): Record<string, unknown> | null {
-  return typeof v === 'object' && v !== null && !Array.isArray(v) ? (v as Record<string, unknown>) : null;
+/** Cast an unknown HTTP request body to a dictionary, returning null for arrays or primitives. */
+function asBody(payload: unknown): Record<string, unknown> | null {
+  return typeof payload === 'object' && payload !== null && !Array.isArray(payload) ? (payload as Record<string, unknown>) : null;
 }
 
 export function buildApp({ store, resolver }: AppOptions): App {
@@ -73,6 +74,7 @@ export function buildApp({ store, resolver }: AppOptions): App {
 
   // The simulator tags its payloads. Real (untagged) Traktor data purges any
   // simulated state first, so demo tracks can never linger into a live set.
+  // Intentional shared cache: tracks if any recent request was simulated.
   let hasSimulatedData = false;
   app.addHook('preHandler', (req, _reply, done) => {
     if (req.method === 'POST') {

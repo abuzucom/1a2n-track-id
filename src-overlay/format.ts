@@ -28,9 +28,9 @@ export function formatTitle(title: string, mix: string): string {
 }
 
 /** Clamp to the unit range; non-numbers become 0. */
-export function clamp01(v: number | null | undefined): number {
-  if (typeof v !== 'number' || !Number.isFinite(v)) return 0;
-  return Math.min(1, Math.max(0, v));
+export function clamp01(value: number | null | undefined): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 0;
+  return Math.min(1, Math.max(0, value));
 }
 
 /** Map an EQ knob value (0..1, 0.5 center) to -100..100 percent from center. */
@@ -59,11 +59,12 @@ export function camelotCompatible(a: string, b: string): boolean {
   return na === nb;
 }
 
+/** Format a duration in seconds into a m:ss string. */
 function formatMinutesSeconds(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
-  const m = Math.floor(total / 60);
-  const s = total % 60;
-  return `${m}:${s.toString().padStart(2, '0')}`;
+  const minutes = Math.floor(total / 60);
+  const remainingSeconds = total % 60;
+  return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
 }
 
 /** Elapsed / total track position, e.g. "0:33 / 12:47". Empty without a

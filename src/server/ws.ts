@@ -15,7 +15,8 @@ export function isAllowedOrigin(origin: string | undefined): boolean {
   if (origin === undefined) return true;
   try {
     return LOCAL_HOSTNAMES.has(new URL(origin).hostname);
-  } catch {
+  } catch (err) {
+    console.debug('origin parsing failed (ignoring):', (err as Error).message);
     return false;
   }
 }
