@@ -3,8 +3,22 @@ name: CI
 on:
   push:
     branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - '.clinerules'
+      - '.copilot-instructions'
+      - '.cursorrules'
+      - '.windsurfrules'
+      - 'traktor-mod/D2/Api/LICENSE'
   pull_request:
     branches: [ main ]
+    paths-ignore:
+      - '**/*.md'
+      - '.clinerules'
+      - '.copilot-instructions'
+      - '.cursorrules'
+      - '.windsurfrules'
+      - 'traktor-mod/D2/Api/LICENSE'
 
 permissions:
   contents: read
