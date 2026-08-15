@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [Unreleased]
+
+### Changed
+
+- CI now cancels superseded workflow runs on the same branch/PR instead of letting them finish, `sync-check.yml` only triggers on changes to the convention files it inspects, and the OS matrix in `ci.yml` is split: PRs run typecheck/lint/test/build on `ubuntu-latest` only, while pushes to `main` cover `windows-latest` and `macos-latest` (Linux is not re-run there since the merged PR already validated it). This cuts Actions minutes usage without dropping any check: every commit on `main` still gets all three OSes validated, just split across the PR and the merge instead of run three times per push.
+
 ## [0.11.0] - 2026-07-31
 
 ### Security

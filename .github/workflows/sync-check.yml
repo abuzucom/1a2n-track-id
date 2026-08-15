@@ -3,11 +3,41 @@ name: Convention Sync Check
 on:
   push:
     branches: [ main ]
+    paths:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - 'CONVENTIONS.md'
+      - '.cursorrules'
+      - '.clinerules'
+      - '.windsurfrules'
+      - '.copilot-instructions'
+      - '.github/copilot-instructions.md'
+      - 'scripts/sync.py'
+      - 'scripts/lint_style.py'
+      - '.github/workflows/sync-check.yml'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'AGENTS.md'
+      - 'CLAUDE.md'
+      - 'GEMINI.md'
+      - 'CONVENTIONS.md'
+      - '.cursorrules'
+      - '.clinerules'
+      - '.windsurfrules'
+      - '.copilot-instructions'
+      - '.github/copilot-instructions.md'
+      - 'scripts/sync.py'
+      - 'scripts/lint_style.py'
+      - '.github/workflows/sync-check.yml'
 
 permissions:
   contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   check-sync:
