@@ -68,6 +68,7 @@ the `schemaVersion` field; keep that doc in sync with `ClientSnapshot`.
 ## Read before touching
 
 - traktor-mod: README section "Install the Traktor QML mod".
+- AGENTS.md and its copies: `docs/agents-conventions.md`.
 
 ## Banned agents
 
