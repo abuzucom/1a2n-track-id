@@ -1,0 +1,67 @@
+name: AGENTS.md Compliance
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+    types: [ opened, synchronize, reopened, ready_for_review ]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  pr-checks:
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Check banned-agent authorship
+        run: |
+          python scripts/check_banned_agents.py \
+            --base "origin/${{ github.event.pull_request.base.ref }}" \
+            --head "${{ github.event.pull_request.head.sha }}"
+      - name: Check commit messages (warning only)
+        if: github.event.pull_request.user.login != 'dependabot[bot]'
+        run: |
+          python scripts/check_commit_message.py \
+            --base "origin/${{ github.event.pull_request.base.ref }}" \
+            --head "${{ github.event.pull_request.head.sha }}"
+
+  static-checks:
+    if: github.event_name != 'pull_request' || github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: Check branch name
+        if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
+        run: python scripts/check_branch_name.py
+      - name: Check persist-credentials on checkout steps
+        run: python scripts/check_persist_credentials.py .github/workflows/*.yml
+      - name: Check for unjustified MD5/SHA-1
+        run: python scripts/check_weak_hashing.py scripts/*.py
+      - name: Check for likely secrets
+        run: python scripts/check_secrets_heuristic.py scripts/*.py .github/workflows/*.yml .pre-commit-config.yaml
+      - name: Check American spelling (warning only)
+        run: python scripts/check_us_spelling.py AGENTS.md
+      - name: Check English only (warning only)
+        run: python scripts/check_english_only.py AGENTS.md
+      - name: Check for hedging and fluff (warning only)
+        run: python scripts/check_hedging.py AGENTS.md

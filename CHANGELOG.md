@@ -4,6 +4,26 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 ## [Unreleased]
 
+### Added
+
+- Reintegrated `abuzucom/agents` upstream conventions (versions 1.0.0-1.10.0):
+  `AGENTS.md` (and its synced copies) gained rules 11 and 12, no persisted
+  git credentials in CI workflows and backing enforcement claims with real
+  checks, plus Style rules for American spelling, English-only text, and no
+  hedging/fluff/self-narration. Branch naming now bans `claude/`-prefixed
+  branches and exempts Dependabot. Upstream's new Rule 12 (non-root
+  containers) was pruned: this repo has no Dockerfile or compose file for
+  it to check.
+- Added 9 portable checker scripts (`scripts/check_persist_credentials.py`,
+  `check_weak_hashing.py`, `check_secrets_heuristic.py`,
+  `check_branch_name.py`, `check_commit_message.py`, `check_us_spelling.py`,
+  `check_english_only.py`, `check_hedging.py`, `check_banned_agents.py`)
+  copied from upstream, wired into a new
+  `.github/workflows/agents-compliance.yml` and `.pre-commit-config.yaml`,
+  backing the new and existing rules that previously claimed no enforcement.
+- `ci.yml` and `sync-check.yml` checkout steps now set
+  `persist-credentials: false`, per the new Rule 11.
+
 ### Changed
 
 - CI now cancels superseded workflow runs on the same branch/PR instead of letting them finish, `sync-check.yml` only triggers on changes to the convention files it inspects, and the OS matrix in `ci.yml` is split: PRs run typecheck/lint/test/build on `ubuntu-latest` only, while pushes to `main` cover `windows-latest` and `macos-latest` (Linux is not re-run there since the merged PR already validated it). This cuts Actions minutes usage without dropping any check: every commit on `main` still gets all three OSes validated, just split across the PR and the merge instead of run three times per push.
