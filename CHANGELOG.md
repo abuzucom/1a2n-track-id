@@ -4,8 +4,28 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 ## [Unreleased]
 
+### Fixed
+
+- The QML mod could not load at all: `traktor-mod/D2/D2.qml` opened a block
+  comment on line 40 that nothing closed, so Traktor's QML engine swallowed
+  `onMappingLoaded`, the `D2` surface, the deck wiring, and the brace closing
+  `Mapping`. Traktor drops a mapping it cannot parse without saying so, which
+  surfaced as the virtual Kontrol D2 being selectable under Controller Manager
+  while adding no device. The closing `*/` was deleted along with the
+  decorative banner comments around it. Machines still running a copy installed
+  before that deletion were unaffected until the next `install.ps1` run.
+- README described the now-playing display as showing "cover at".
+
 ### Added
 
+- `scripts/check-qml-mod.mjs` rejects a QML file that ends inside an
+  unterminated block comment, with `scripts/check-qml-mod.test.mjs` running it
+  over the shipped mod on every CI run. Nothing else in the repo reads the QML,
+  so a dropped delimiter previously reached a machine before anything noticed.
+- `install.ps1` and `install.sh` now validate the mod's QML before the copy and
+  abort without touching Traktor if it fails, so a broken mod can no longer
+  overwrite a working install. Both also verify every copied file matches its
+  source afterward. They require Node.js on PATH for the check.
 - Reintegrated `abuzucom/agents` upstream conventions (versions 1.0.0-1.10.0):
   `AGENTS.md` (and its synced copies) gained rules 11 and 12, no persisted
   git credentials in CI workflows and backing enforcement claims with real
