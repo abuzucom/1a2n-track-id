@@ -27,10 +27,13 @@ The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/trakto
      ```
      (`./traktor-mod/uninstall.sh` restores stock files.)
 
-   The installer checks the mod's QML before it copies anything, and aborts
-   without touching Traktor if a file would not parse. Traktor silently drops a
-   mapping it cannot parse, which shows up as the D2 refusing to be added.
-   Node.js must be on PATH for that check; the overlay server needs it anyway.
+   The installer checks every file Traktor loads before it copies anything, and
+   aborts without touching Traktor if one of them cannot compile. Traktor
+   silently drops a mapping it cannot compile, which shows up as the D2
+   refusing to be added, with nothing in any log. The check finds structural
+   faults such as an unclosed brace, string, or comment; it cannot see semantic
+   errors, which only Traktor detects. Node.js must be on PATH for it; the
+   overlay server needs it anyway.
 3. Start Traktor Pro. No hardware is needed. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. The "virtual" D2 mapping is what runs the mod.
 
 > **After a Traktor update:** NI updates can overwrite the mod. Just run the install script again.

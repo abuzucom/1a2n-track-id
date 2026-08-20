@@ -5,6 +5,27 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MOD_DIR="${SCRIPT_DIR}/D2"
+CHECKER="${SCRIPT_DIR}/../scripts/check-qml-mod.mjs"
+
+# Every failure exits through here, so none scrolls past unnoticed. The read
+# returns immediately at EOF, so a piped or CI run exits instead of hanging.
+fail() {
+  local title="$1"
+  shift
+  {
+    echo ""
+    echo "================================================================"
+    echo " ABORTED: ${title}"
+    echo "================================================================"
+    echo ""
+    for paragraph in "$@"; do
+      echo "  ${paragraph}"
+    done
+    echo ""
+  } >&2
+  read -r -p "Press Enter to exit" _ || true
+  exit 1
+}
 
 TRAKTOR_QML=""
 if [ -d "/Applications/Native Instruments/Traktor Pro 4/Traktor.app/Contents/Resources/qml/CSI" ]; then
@@ -14,44 +35,77 @@ elif [ -d "/Applications/Native Instruments/Traktor Pro 3/Traktor.app/Contents/R
 fi
 
 if [ -z "${TRAKTOR_QML}" ]; then
-  echo "Error: Traktor Pro QML folder not found in /Applications/Native Instruments/" >&2
-  echo "Is Traktor Pro 4 or Traktor Pro 3 installed?" >&2
-  exit 1
+  fail "Traktor Pro was not found" \
+    "Looked under /Applications/Native Instruments/ for Traktor Pro 4 and" \
+    "Traktor Pro 3. Install Traktor to the default location, or edit the" \
+    "paths at the top of this script if yours lives elsewhere."
 fi
 
 TARGET="${TRAKTOR_QML}/D2"
 BACKUP="${TRAKTOR_QML}/D2.stock-backup"
 
 if [ ! -d "${TARGET}" ]; then
-  echo "Error: Traktor D2 QML folder not found at ${TARGET}" >&2
-  exit 1
+  fail "the Traktor D2 QML folder is missing" \
+    "Expected it at:" \
+    "  ${TARGET}"
 fi
 
 if pgrep -xi "Traktor" >/dev/null 2>&1; then
-  echo "Error: Traktor is running. Close it before installing the mod." >&2
-  exit 1
+  fail "Traktor is running" \
+    "Close Traktor completely, then run this script again." \
+    "Traktor reads these files at startup and holds them open."
 fi
 
-# Validate before the copy, not after: a mod file Traktor cannot parse leaves
-# the D2 device missing from Controller Manager, and copying it over a working
-# install destroys the only good copy on the machine.
-CHECKER="${SCRIPT_DIR}/../scripts/check-qml-mod.mjs"
 if [ ! -f "${CHECKER}" ]; then
-  echo "Error: validator not found at ${CHECKER}." >&2
-  echo "Run this script from a full checkout of the repository." >&2
-  exit 1
+  fail "the mod validator is missing" \
+    "Expected it at:" \
+    "  ${CHECKER}" \
+    "" \
+    "Run this script from a full checkout of the repository, not from a" \
+    "copy of the traktor-mod folder on its own."
 fi
 
 if ! command -v node >/dev/null 2>&1; then
-  echo "Error: Node.js is not installed or not on PATH. It is needed to validate" >&2
-  echo "the mod, and to run the overlay server. Install it from https://nodejs.org" >&2
-  echo "and run this again." >&2
-  exit 1
+  fail "Node.js is not installed or not on PATH" \
+    "It validates the mod before installing, and it runs the overlay" \
+    "server. Install it from https://nodejs.org, then run this again."
 fi
 
-if ! node "${CHECKER}" "${MOD_DIR}"; then
-  echo "Error: the QML mod failed validation, so nothing was installed." >&2
-  exit 1
+# Validate before the copy, not after: Traktor drops a mapping it cannot
+# compile without reporting it, so an unchecked install fails silently, and
+# copying a broken mod over a working one destroys the only good copy here.
+set +e
+VERDICT="$(node "${CHECKER}" "${MOD_DIR}" 2>&1)"
+CHECKER_EXIT=$?
+set -e
+
+[ -n "${VERDICT}" ] && echo "${VERDICT}"
+
+if [ "${CHECKER_EXIT}" -ne 0 ]; then
+  fail "the QML mod in this repository will not compile" \
+    "Nothing was copied. Traktor was not touched." \
+    "" \
+    "This is a defect in the repository, not on this machine. Traktor" \
+    "drops a mapping it cannot compile without reporting it, so installing" \
+    "this would leave the D2 missing from Controller Manager with nothing" \
+    "in any log to explain it." \
+    "" \
+    "Revert or hotfix the change that broke it:" \
+    "  git log -1 --oneline -- traktor-mod/D2" \
+    "  git revert <that commit>" \
+    "or fix the file named above, then run this script again."
+fi
+
+# A validator that produced no verdict has told us nothing. Treat that as a
+# failure: a silent pass here is what let a broken mod install once already.
+if [ -z "${VERDICT}" ]; then
+  fail "the mod validator produced no output" \
+    "It should print a line naming how many files it checked. Exiting" \
+    "without one means it did not run, so the mod is unverified and this" \
+    "script will not install it." \
+    "" \
+    "Check that node runs the validator directly:" \
+    "  node \"${CHECKER}\" \"${MOD_DIR}\""
 fi
 
 SUDO=""
@@ -75,14 +129,18 @@ while IFS= read -r source_file; do
   relative="${source_file#"${MOD_DIR}/"}"
   copied="${TARGET}/${relative}"
   if [ ! -f "${copied}" ]; then
-    echo "Error: install incomplete, ${relative} did not reach ${TARGET}." >&2
-    echo "Restore with ./uninstall.sh and try again." >&2
-    exit 1
+    fail "the install did not complete" \
+      "${relative} never reached ${TARGET}." \
+      "" \
+      "Traktor is in a half-installed state. Restore it with:" \
+      "  ./traktor-mod/uninstall.sh"
   fi
   if ! cmp -s "${source_file}" "${copied}"; then
-    echo "Error: install corrupt, ${relative} does not match the source." >&2
-    echo "Restore with ./uninstall.sh and try again." >&2
-    exit 1
+    fail "the install is corrupt" \
+      "${relative} does not match the source it was copied from." \
+      "" \
+      "Traktor is in a half-installed state. Restore it with:" \
+      "  ./traktor-mod/uninstall.sh"
   fi
 done < <(find "${MOD_DIR}" -type f)
 

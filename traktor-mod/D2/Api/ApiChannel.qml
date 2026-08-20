@@ -4,9 +4,15 @@ import "ApiClient.js" as ApiClient
 
 Item {
   property int       index:            1
-  property bool      isOnAirState:     null
-  property real      onAirLevelState:  null
-  property bool      eqDirty:          false
+  // Explicit "sent yet" gates rather than a null sentinel: QML cannot hold
+  // null in a bool or a real and coerces it to false and 0, which are both
+  // legitimate readings, so an unsent channel was indistinguishable from one
+  // reporting off-air at zero.
+  property bool      isOnAirState:       false
+  property bool      hasSentOnAir:       false
+  property real      onAirLevelState:    0
+  property bool      hasSentOnAirLevel:  false
+  property bool      eqDirty:            false
 
   readonly property string    pathPrefix:  "app.traktor.mixer.channels." + index + "."
 
@@ -64,11 +70,12 @@ Item {
     onTriggered: {
       var onAirLevel = computeOnAirLevel()
 
-      if (onAirLevel != onAirLevelState) {
+      if (!hasSentOnAirLevel || onAirLevel != onAirLevelState) {
         ApiClient.send("updateChannel/" + index, {
           onAirLevel: onAirLevel,
         })
         onAirLevelState = onAirLevel
+        hasSentOnAirLevel = true
       }
     }
   }
@@ -92,11 +99,12 @@ Item {
   function updateOnAirState() {
     var isOnAir = computeIsOnAir()
 
-    if (isOnAir != isOnAirState) {
+    if (!hasSentOnAir || isOnAir != isOnAirState) {
       ApiClient.send("updateChannel/" + index, {
         isOnAir: isOnAir,
       })
       isOnAirState = isOnAir
+      hasSentOnAir = true
     }
 
     onAirLevelChangedTimer.restart()
