@@ -26,11 +26,33 @@ The mod (adapted from [traktor-api-client](https://github.com/ErikMinekus/trakto
      ./traktor-mod/install.sh
      ```
      (`./traktor-mod/uninstall.sh` restores stock files.)
-3. Start Traktor Pro. No hardware is needed. If you don't own a Kontrol D2: **Preferences > Controller Manager > Add... > Traktor > Kontrol D2**. The "virtual" D2 mapping is what runs the mod.
+3. Start Traktor Pro. If you own a Kontrol D2, the mod runs once Traktor detects it. Otherwise add a "virtual" D2: **Preferences > Controller Manager > Add... > Pre-mapped > Traktor Kontrol > D2**. That mapping is what runs the mod. If no device appears, see [No D2 in the device list](#no-d2-in-the-device-list).
 
 > **After a Traktor update:** NI updates can overwrite the mod. Just run the install script again.
 
 > **After a material change in the QML mod:** Run the install script again.
+
+#### No D2 in the device list
+
+On Traktor Pro 4 (seen on 4.5.1.21), **Add... > Pre-mapped > Traktor Kontrol > D2** can do
+nothing at all: no device joins the **Device** dropdown and `Traktor.log` records no error.
+The D2 is an HID controller, and Traktor Pro 4 binds a pre-mapped HID entry to detected
+hardware, so with no D2 connected there is nothing for it to add. The stock `CSI\D2` folder
+behaves the same way, so this is Traktor's behavior rather than a fault in the mod. The split
+in the menu shows the rule: `New` lists the MIDI controllers you can add without hardware,
+while the HID controllers (D2, S5, S8, S3, MX2, and the MK3 models) appear only under
+`Pre-mapped`. The upstream instructions this mod inherited were written against Traktor Pro 3,
+where the D2 entry could be added with no hardware present.
+
+Two ways around it:
+
+- **Import a `.tsi`.** On a machine that already has the D2 entry, select it in Controller
+  Manager and **Export**, then load that file here with **Add... > Import from disk...**.
+  Import builds the device from the file instead of from detected hardware.
+- **Retarget the mod** at a controller this install can add. Copy `traktor-mod/D2/Api` into
+  that controller's folder under `Resources64\qml\CSI`, then add `import "./Api"` and an
+  `ApiModule {}` element to its `Mapping`. The mod needs only `ApiModule {}` inside a mapping
+  Traktor actually loads; nothing about it is specific to the D2 surface.
 
 ### 2. Start the overlay server
 

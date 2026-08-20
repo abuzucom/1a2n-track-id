@@ -26,6 +26,15 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 ### Changed
 
+- README now gives the real Controller Manager path for the virtual D2,
+  **Add... > Pre-mapped > Traktor Kontrol > D2**, replacing the Traktor Pro 3
+  era **Add... > Traktor > Kontrol D2**, and drops the claim that no hardware
+  is needed. A new "No D2 in the device list" section covers Traktor Pro 4
+  refusing to add a pre-mapped HID controller with no hardware connected: the
+  click adds nothing and logs nothing, stock `CSI\D2` fails identically, and
+  the way out is a `.tsi` import or moving `ApiModule {}` into a mapping this
+  Traktor install can load.
+
 - CI now cancels superseded workflow runs on the same branch/PR instead of letting them finish, `sync-check.yml` only triggers on changes to the convention files it inspects, and the OS matrix in `ci.yml` is split: PRs run typecheck/lint/test/build on `ubuntu-latest` only, while pushes to `main` cover `windows-latest` and `macos-latest` (Linux is not re-run there since the merged PR already validated it). This cuts Actions minutes usage without dropping any check: every commit on `main` still gets all three OSes validated, just split across the PR and the merge instead of run three times per push.
 - `ci.yml` now skips entirely (`paths-ignore`) for changes that touch only Markdown files, the AI assistant instruction files (`.cursorrules`, `.clinerules`, `.windsurfrules`, `.copilot-instructions`), or the vendored `traktor-mod/D2/Api/LICENSE`. Documentation-only changes no longer trigger a build/test run at all, since none of those files affect the TypeScript build or test suite.
 
