@@ -56,6 +56,7 @@ Mapping
       left.screenView.value = ScreenView.deck;
     }
   }
+  */
 
   onMappingLoaded:
   {
