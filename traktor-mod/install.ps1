@@ -9,28 +9,105 @@ $target = Join-Path $traktorQml 'D2'
 $backup = Join-Path $traktorQml 'D2.stock-backup'
 $checker = Join-Path $PSScriptRoot '..\scripts\check-qml-mod.mjs'
 
-if (-not (Test-Path $target)) {
-    throw "Traktor Pro 4 D2 QML folder not found at $target. Is Traktor Pro 4 installed?"
-}
-if (Get-Process -Name 'Traktor' -ErrorAction SilentlyContinue) {
-    throw 'Traktor is running. Close it before installing the mod.'
+# Every failure exits through here, so none can scroll past or vanish with the
+# window when this is launched by a shortcut rather than from a live console.
+function Fail {
+    param([string] $Title, [string[]] $Body)
+
+    Write-Host ''
+    Write-Host '================================================================' -ForegroundColor Red
+    Write-Host " ABORTED: $Title" -ForegroundColor Red
+    Write-Host '================================================================' -ForegroundColor Red
+    Write-Host ''
+    foreach ($paragraph in $Body) { Write-Host "  $paragraph" }
+    Write-Host ''
+    Read-Host 'Press Enter to exit'
+    exit 1
 }
 
-# Validate before the copy, not after: a mod file Traktor cannot parse leaves
-# the D2 device missing from Controller Manager, and copying it over a working
-# install destroys the only good copy on the machine.
+if (-not (Test-Path $target)) {
+    Fail 'Traktor Pro 4 was not found' @(
+        "Expected the D2 QML folder at:",
+        "  $target",
+        '',
+        'Install Traktor Pro 4 to the default location, or edit the path at',
+        'the top of this script if yours lives elsewhere.'
+    )
+}
+if (Get-Process -Name 'Traktor' -ErrorAction SilentlyContinue) {
+    Fail 'Traktor is running' @(
+        'Close Traktor completely, then run this script again.',
+        'Traktor reads these files at startup and holds them open.'
+    )
+}
 if (-not (Test-Path $checker)) {
-    throw "Validator not found at $checker. Run this script from a full checkout of the repository."
+    Fail 'the mod validator is missing' @(
+        "Expected it at:",
+        "  $checker",
+        '',
+        'Run this script from a full checkout of the repository, not from a',
+        'copy of the traktor-mod folder on its own.'
+    )
 }
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
-    throw 'Node.js is not installed or not on PATH. It is needed to validate the mod, and to run the overlay server. Install it from https://nodejs.org and run this again.'
+    Fail 'Node.js is not installed or not on PATH' @(
+        'It validates the mod before installing, and it runs the overlay',
+        'server. Install it from https://nodejs.org, open a new PowerShell so',
+        'PATH picks it up, then run this script again.'
+    )
 }
-# No 2>&1 here: merging a native command's stderr into the pipeline turns it
-# into error records under $ErrorActionPreference = 'Stop'. Let node print its
-# own findings, which name the offending file and line, and read the exit code.
-& node $checker $modDir
-if ($LASTEXITCODE -ne 0) {
-    throw 'The QML mod failed validation, so nothing was installed. See the errors above.'
+
+# Validate before the copy, not after: Traktor drops a mapping it cannot
+# compile without reporting it, so an unchecked install fails silently, and
+# copying a broken mod over a working one destroys the only good copy here.
+#
+# The preference is relaxed only around this call. Merging a native command's
+# stderr into the pipeline with 2>&1 turns each line into an error record, and
+# under 'Stop' the first one throws before $LASTEXITCODE can be read, losing
+# the validator's findings behind a NativeCommandError.
+$previousPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
+$LASTEXITCODE = $null
+$verdict = (& node $checker $modDir 2>&1 | Out-String).Trim()
+$checkerExit = $LASTEXITCODE
+$ErrorActionPreference = $previousPreference
+
+if ($verdict) { Write-Host $verdict }
+if ($null -eq $checkerExit) {
+    Fail 'the mod validator did not run' @(
+        'node was found on PATH but produced no exit code, so the mod is',
+        'unverified and this script will not install it.',
+        '',
+        'Check that node runs the validator directly:',
+        "  node `"$checker`" `"$modDir`""
+    )
+}
+if ($checkerExit -ne 0) {
+    Fail 'the QML mod in this repository will not compile' @(
+        'Nothing was copied. Traktor was not touched.',
+        '',
+        'This is a defect in the repository, not on this machine. Traktor',
+        'drops a mapping it cannot compile without reporting it, so installing',
+        'this would leave the D2 missing from Controller Manager with nothing',
+        'in any log to explain it.',
+        '',
+        'Revert or hotfix the change that broke it:',
+        '  git log -1 --oneline -- traktor-mod/D2',
+        '  git revert <that commit>',
+        'or fix the file named above, then run this script again.'
+    )
+}
+# A validator that produced no verdict has told us nothing. Treat that as a
+# failure: a silent pass here is what let a broken mod install once already.
+if (-not $verdict) {
+    Fail 'the mod validator produced no output' @(
+        'It should print a line naming how many files it checked. Exiting',
+        'without one means it did not run, so the mod is unverified and this',
+        'script will not install it.',
+        '',
+        'Check that node runs the validator directly:',
+        "  node `"$checker`" `"$modDir`""
+    )
 }
 
 if (-not (Test-Path $backup)) {
@@ -48,10 +125,20 @@ foreach ($file in Get-ChildItem -Path $modDir -Recurse -File) {
     $relative = $file.FullName.Substring($modDir.Length).TrimStart('\')
     $copied = Join-Path $target $relative
     if (-not (Test-Path $copied)) {
-        throw "Install incomplete: $relative did not reach $target. Restore with uninstall.ps1 and try again."
+        Fail 'the install did not complete' @(
+            "$relative never reached $target.",
+            '',
+            'Traktor is in a half-installed state. Restore it with:',
+            '  .\traktor-mod\uninstall.ps1'
+        )
     }
     if ((Get-FileHash $file.FullName).Hash -ne (Get-FileHash $copied).Hash) {
-        throw "Install corrupt: $relative does not match the source. Restore with uninstall.ps1 and try again."
+        Fail 'the install is corrupt' @(
+            "$relative does not match the source it was copied from.",
+            '',
+            'Traktor is in a half-installed state. Restore it with:',
+            '  .\traktor-mod\uninstall.ps1'
+        )
     }
 }
 

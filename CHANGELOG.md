@@ -6,6 +6,25 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 ### Fixed
 
+- The mod validator never ran on Windows. Its entry-point guard compared
+  `import.meta.url` against a `file://` template built from `process.argv[1]`,
+  which matches on POSIX but never on Windows, where argv carries
+  `C:\path\to.mjs` and `import.meta.url` reports `file:///C:/path/to.mjs`. The
+  CLI printed nothing and exited 0, so `install.ps1` read success and installed
+  whatever was in the repo: the guard added for exactly this failure was inert
+  on the platform that needed it. The comparison now goes through
+  `pathToFileURL`, and a test invokes the CLI as a subprocess so the entry point
+  is covered on every platform CI runs, which importing the function never was.
+- The validator reported success when given a path holding no files to check,
+  and dumped a raw stack trace when given a path that does not exist. Both now
+  exit non-zero with a message naming the path.
+- `ApiChannel.qml` initialized `isOnAirState` and `onAirLevelState` to `null`.
+  QML holds neither type as null and coerces to `false` and `0`, both
+  legitimate readings, so a channel that started off-air with its fader down
+  was indistinguishable from one that had never reported, and skipped its first
+  send until the 10 second keep-alive. Explicit "sent yet" gates replace the
+  sentinel.
+
 - The QML mod could not load at all: `traktor-mod/D2/D2.qml` opened a block
   comment on line 40 that nothing closed, so Traktor's QML engine swallowed
   `onMappingLoaded`, the `D2` surface, the deck wiring, and the brace closing
@@ -18,6 +37,16 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 ### Added
 
+- `scripts/check-qml-mod.mjs` is now a structural lexer rather than a
+  block-comment scan. It reports unterminated comments, strings, template
+  literals, and regular expressions, unmatched and mismatched brackets, and
+  brackets left open at end of file, each at the line that caused it. It tells
+  a regex literal from division by the preceding token, since misreading one
+  miscounts every bracket after it. It proves a file cannot compile; it cannot
+  prove one will, and says so, because semantic faults are visible only to
+  Traktor. `Api/ApiClient.js` is now scanned too, since Traktor loads it
+  through the same engine and a syntax error there breaks the mapping
+  identically.
 - `scripts/check-qml-mod.mjs` rejects a QML file that ends inside an
   unterminated block comment, with `scripts/check-qml-mod.test.mjs` running it
   over the shipped mod on every CI run. Nothing else in the repo reads the QML,
@@ -45,6 +74,14 @@ All notable changes to this project are documented here. Versioning follows [Sem
   `persist-credentials: false`, per the new Rule 11.
 
 ### Changed
+
+- Both installers now route every failure through one handler that prints a
+  banner, states the cause, and waits for a keypress, so no failure scrolls past
+  or vanishes when the window closes. A mod that will not compile now reports
+  that the repository is at fault and needs the offending change reverted or
+  hotfixed, rather than reading as a failed install. Both also refuse to
+  proceed when the validator returns no verdict at all, so a repeat of the
+  Windows no-op cannot silently reopen the hole.
 
 - CI now cancels superseded workflow runs on the same branch/PR instead of letting them finish, `sync-check.yml` only triggers on changes to the convention files it inspects, and the OS matrix in `ci.yml` is split: PRs run typecheck/lint/test/build on `ubuntu-latest` only, while pushes to `main` cover `windows-latest` and `macos-latest` (Linux is not re-run there since the merged PR already validated it). This cuts Actions minutes usage without dropping any check: every commit on `main` still gets all three OSes validated, just split across the PR and the merge instead of run three times per push.
 - `ci.yml` now skips entirely (`paths-ignore`) for changes that touch only Markdown files, the AI assistant instruction files (`.cursorrules`, `.clinerules`, `.windsurfrules`, `.copilot-instructions`), or the vendored `traktor-mod/D2/Api/LICENSE`. Documentation-only changes no longer trigger a build/test run at all, since none of those files affect the TypeScript build or test suite.
