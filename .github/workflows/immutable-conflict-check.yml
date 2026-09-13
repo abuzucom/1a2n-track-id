@@ -37,6 +37,8 @@ jobs:
           path: trusted-base
           persist-credentials: false
           fetch-depth: 201
+      # codeql[actions/untrusted-checkout]: the head is scanned as immutable
+      # data by the trusted base checker and no pull request code is executed.
       - name: Check out the exact pull request head
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:

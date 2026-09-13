@@ -168,7 +168,10 @@ def _run_requested_command(repo_root, arguments: list[str]) -> int:
         return 2
     decision, reason = gate_core.forge_verdict("gh", arguments)
     if decision == "deny":
-        print(f"error: {reason}", file=sys.stderr)
+        if "removes work" in reason:
+            print("error: GitHub safety policy: removes work", file=sys.stderr)
+        else:
+            print("error: GitHub safety policy denied this command", file=sys.stderr)
         return 2
     try:
         authenticated_account(repo_root)
