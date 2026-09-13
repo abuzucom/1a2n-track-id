@@ -18,6 +18,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - Updated agent-policy documentation and synchronized instruction copies.
 - Documented the repository-specific exclusion of the upstream container rule.
 - Added Makefile and pre-commit wiring for the adopted policy checks.
+- Added Codex, Gemini, and Antigravity lifecycle hook configurations.
 
 ### Fixed
 

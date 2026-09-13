@@ -1,0 +1,18 @@
+{
+  "agents-policy": {
+    "PreInvocation": [
+      {
+        "command": "python ../hooks/reinject_agents_policy.py --client antigravity"
+      }
+    ],
+    "PreToolUse": [
+      {
+        "hooks": [
+          {
+            "command": "python ../hooks/reinject_agents_policy.py --client antigravity"
+          }
+        ]
+      }
+    ]
+  }
+}
