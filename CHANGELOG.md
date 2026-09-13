@@ -20,6 +20,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - Added Makefile and pre-commit wiring for the adopted policy checks.
 - Added Codex, Gemini, and Antigravity lifecycle hook configurations.
 - Tightened GitHub target matching and sanitized gate decision messages.
+- Updated Antigravity policy reinjection to use the native PreToolUse schema.
 
 ### Fixed
 

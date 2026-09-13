@@ -8,7 +8,7 @@
     "hooks/block_destructive_bash.py": "d2081275916b12249cd356947f82bbd32bd6c6abdf4642ab6914bf1e5db590e9",
     "hooks/block_destructive_cmd.py": "7401659646431a8a0a83602b5c8857d19558d2eac7582ebb3fec1b8d8d062072",
     "hooks/block_destructive_powershell.py": "97f2253ee73887cd389cb8d70f9224b77939794d7597dcc3d4e6bc067a6a190b",
-    "hooks/reinject_agents_policy.py": "f9bbc32a72ffcc817b091e57e45c0872f9df00805c00c6cd2a96113f642c1019",
+    "hooks/reinject_agents_policy.py": "718b683f2f66ffc20c0d26a14023985071a6398df2729a49d8c7f15aca4dc1f1",
     "hooks/require_consent.py": "cd1ba6f5a85007ad4ca79436eac42a6c93751eb367aa58a8da0bf4302f2d2c3d",
     "tests/gate_corpus.py": "c7665b3759a6b601520ff01e99cc6ec31dd8a6cb7ff9261f8bbb60e7a7e64528",
     "tests/json_line_worker.py": "57cbf9ed4c57506201e9c9e4ae57d6b8a330d5ede2f8fb76f0c4f72dae55fc0b",

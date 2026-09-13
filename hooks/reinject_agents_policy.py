@@ -164,10 +164,15 @@ def emit_gemini(payload: dict, policy: str, digest: str) -> int:
 
 
 def emit_antigravity(policy: str, digest: str) -> int:
-    """Emit complete Antigravity ephemeral invocation context."""
-    output = {"injectSteps": [{
-        "ephemeralMessage": policy_context(policy, digest),
-    }]}
+    """Emit complete Antigravity pre-tool context."""
+    context = policy_context(policy, digest)
+    output = {
+        "hookSpecificOutput": {
+            "hookEventName": "PreToolUse",
+            "additionalContext": context,
+        },
+        "systemMessage": context,
+    }
     print(json.dumps(output))
     return 0
 
