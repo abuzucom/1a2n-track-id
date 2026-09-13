@@ -163,15 +163,15 @@ def emit_gemini(payload: dict, policy: str, digest: str) -> int:
     return 0
 
 
-def emit_antigravity(policy: str, digest: str) -> int:
-    """Emit complete Antigravity pre-tool context."""
+def emit_antigravity(payload: dict, policy: str, digest: str) -> int:
+    """Emit the native output for one Antigravity lifecycle event."""
     context = policy_context(policy, digest)
+    if "toolCall" not in payload:
+        print(json.dumps({"injectSteps": [{"ephemeralMessage": context}]}))
+        return 0
     output = {
-        "hookSpecificOutput": {
-            "hookEventName": "PreToolUse",
-            "additionalContext": context,
-        },
-        "systemMessage": context,
+        "decision": "allow",
+        "reason": context,
     }
     print(json.dumps(output))
     return 0
@@ -190,7 +190,7 @@ def run_hook(args: argparse.Namespace, payload: dict) -> int:
         return emit_codex(payload, policy, digest)
     if args.client == "gemini":
         return emit_gemini(payload, policy, digest)
-    return emit_antigravity(policy, digest)
+    return emit_antigravity(payload, policy, digest)
 
 
 def main() -> int:

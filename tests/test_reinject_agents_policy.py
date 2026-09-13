@@ -98,7 +98,7 @@ class PolicyContentTest(unittest.TestCase):
         self.assertEqual(request["messages"][1]["content"], "hello")
         self.assertTrue(request["messages"][0]["content"].endswith(self.policy))
 
-    def test_antigravity_receives_native_pre_tool_policy(self):
+    def test_antigravity_receives_ephemeral_policy_before_invocation(self):
         payload = {
             "conversationId": "test-conversation",
             "workspacePaths": [str(REPO_ROOT)],
@@ -106,11 +106,21 @@ class PolicyContentTest(unittest.TestCase):
         }
         result = run_hook("antigravity", payload)
         self.assertEqual(result.returncode, 0, result.stderr)
+        message = json.loads(result.stdout)["injectSteps"][0]["ephemeralMessage"]
+        self.assertTrue(message.endswith(self.policy))
+
+    def test_antigravity_pre_tool_uses_decision_schema(self):
+        payload = {
+            "conversationId": "test-conversation",
+            "workspacePaths": [str(REPO_ROOT)],
+            "toolCall": {"name": "view_file", "args": {}},
+            "stepIdx": 0,
+        }
+        result = run_hook("antigravity", payload)
+        self.assertEqual(result.returncode, 0, result.stderr)
         output = json.loads(result.stdout)
-        specific = output["hookSpecificOutput"]
-        self.assertEqual(specific["hookEventName"], "PreToolUse")
-        self.assertTrue(specific["additionalContext"].endswith(self.policy))
-        self.assertEqual(output["systemMessage"], specific["additionalContext"])
+        self.assertEqual(output["decision"], "allow")
+        self.assertTrue(output["reason"].endswith(self.policy))
 
     def test_claude_emits_session_context_and_numbered_chunks(self):
         session = run_hook("claude", {"hook_event_name": "SessionStart"})
