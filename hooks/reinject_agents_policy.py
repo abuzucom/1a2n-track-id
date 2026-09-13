@@ -167,7 +167,7 @@ def emit_antigravity(payload: dict, policy: str, digest: str) -> int:
     """Emit the native output for one Antigravity lifecycle event."""
     context = policy_context(policy, digest)
     if "toolCall" not in payload:
-        print(json.dumps({"injectSteps": [{"ephemeralMessage": context}]}))
+        print(json.dumps({}))
         return 0
     output = {
         "decision": "allow",

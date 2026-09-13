@@ -26,6 +26,7 @@ import json
 import ntpath
 import os
 import posixpath
+import re
 import shlex
 import subprocess
 import sys

@@ -98,7 +98,7 @@ class PolicyContentTest(unittest.TestCase):
         self.assertEqual(request["messages"][1]["content"], "hello")
         self.assertTrue(request["messages"][0]["content"].endswith(self.policy))
 
-    def test_antigravity_receives_ephemeral_policy_before_invocation(self):
+    def test_antigravity_returns_empty_pre_invocation_output(self):
         payload = {
             "conversationId": "test-conversation",
             "workspacePaths": [str(REPO_ROOT)],
@@ -106,8 +106,7 @@ class PolicyContentTest(unittest.TestCase):
         }
         result = run_hook("antigravity", payload)
         self.assertEqual(result.returncode, 0, result.stderr)
-        message = json.loads(result.stdout)["injectSteps"][0]["ephemeralMessage"]
-        self.assertTrue(message.endswith(self.policy))
+        self.assertEqual(json.loads(result.stdout), {})
 
     def test_antigravity_pre_tool_uses_decision_schema(self):
         payload = {
