@@ -1,0 +1,25 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python hooks/reinject_agents_policy.py --client codex",
+            "additionalContextLimit": 0
+          }
+        ]
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python hooks/reinject_agents_policy.py --client codex"
+          }
+        ]
+      }
+    ]
+  }
+}

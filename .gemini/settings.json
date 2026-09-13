@@ -1,0 +1,14 @@
+{
+  "hooks": {
+    "BeforeModel": [
+      {
+        "command": "python hooks/reinject_agents_policy.py --client gemini"
+      }
+    ],
+    "BeforeTool": [
+      {
+        "command": "python hooks/reinject_agents_policy.py --client gemini"
+      }
+    ]
+  }
+}

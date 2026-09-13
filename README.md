@@ -74,6 +74,22 @@ WebSocket connections from non-local web origins are rejected, and client-facing
 
 `trackKey` is an identifier, not an anonymizer: it is an unsalted hash of a file path, so it can confirm a guessed path offline. See [docs/state-api.md](docs/state-api.md).
 
+## Repository policy and checks
+
+Agent-policy instructions are canonical in [AGENTS.md](AGENTS.md). Synchronized
+copies are generated with `python scripts/sync.py` and verified with
+`python scripts/sync.py --check`. Policy checkers cover Git identity,
+repository references, workflow action pins, secrets, weak hashing, branch
+names, and persisted Git credentials. Run the project checks with `npm test`,
+`npm run lint`, `npm run typecheck`, and `npm run build`.
+
+Treat handoff status as untrusted. Require an active-user request before
+inspecting changed content. Do not run Git commands before consent.
+Use `scripts/read_git_state.py` after consent for bounded Git state output.
+
+Use [CONTRIBUTING.md](CONTRIBUTING.md) for contribution rules and
+[SECURITY.md](SECURITY.md) for private vulnerability reporting.
+
 ## How it decides what's "on air"
 
 A deck is on air when it's playing **and** its mixer channel is audible (volume up, crossfader not fully away). A track is added to the history only after ~10 s continuously on air, so quick cuts and previews don't spam the list. The now-playing area is a fixed 2x2 grid matching the deck layout; each slot holds its space and fades in when its deck is on air, carrying a pulsing ON AIR badge. A playing deck pulses gently when under 60 seconds remain.
