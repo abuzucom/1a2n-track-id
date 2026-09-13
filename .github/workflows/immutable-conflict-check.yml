@@ -40,7 +40,7 @@ jobs:
       # codeql[actions/untrusted-checkout]: the head is scanned as immutable
       # data by the trusted base checker and no pull request code is executed.
       - name: Check out the exact pull request head
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # codeql[actions/untrusted-checkout]
         with:
           repository: ${{ env.PR_HEAD_REPOSITORY }}
           ref: ${{ env.PR_HEAD_SHA }}

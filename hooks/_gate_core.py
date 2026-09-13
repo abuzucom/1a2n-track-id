@@ -376,7 +376,7 @@ def read_payload(empty_is_session_start: bool = False):
 
 def emit(gate: str, decision: str, reason: str) -> int:
     """Print the gate's decision and return the exit code it needs."""
-    message = f"blocked by hooks/{gate}: {reason}"
+    message = f"blocked by hooks/{sanitize(gate)}: {sanitize(reason)}"
     output = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -2881,7 +2881,11 @@ def _git_subcommand(args: list) -> tuple:
 def _is_github_target(tokens: list) -> bool:
     """Return whether arguments name GitHub or a pull request ref."""
     text = " ".join(tokens).casefold()
-    return ("github.com" in text or "api.github.com" in text
+    github_host = re.search(
+        r"(?<![a-z0-9.-])(?:api\.)?github\.com(?![a-z0-9.-])",
+        text,
+    )
+    return (github_host is not None
             or "refs/pull/" in text or "pull/" in text)
 
 

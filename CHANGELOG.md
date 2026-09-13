@@ -19,6 +19,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - Documented the repository-specific exclusion of the upstream container rule.
 - Added Makefile and pre-commit wiring for the adopted policy checks.
 - Added Codex, Gemini, and Antigravity lifecycle hook configurations.
+- Tightened GitHub target matching and sanitized gate decision messages.
 
 ### Fixed
 
