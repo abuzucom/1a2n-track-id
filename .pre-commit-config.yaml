@@ -11,6 +11,11 @@ repos:
         entry: python scripts/sync.py --check
         language: system
         pass_filenames: false
+      - id: external-pr-refs
+        name: external pull request references
+        entry: python scripts/check_external_pr_refs.py
+        language: system
+        pass_filenames: false
       - id: check-conflict-markers
         name: check conflict markers
         entry: python scripts/check_conflict_markers.py --staged
