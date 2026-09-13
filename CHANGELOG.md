@@ -104,7 +104,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - CI now cancels superseded workflow runs on the same branch/PR instead of letting them finish, `sync-check.yml` only triggers on changes to the convention files it inspects, and the OS matrix in `ci.yml` is split: PRs run typecheck/lint/test/build on `ubuntu-latest` only, while pushes to `main` cover `windows-latest` and `macos-latest` (Linux is not re-run there since the merged PR already validated it). This cuts Actions minutes usage without dropping any check: every commit on `main` still gets all three OSes validated, just split across the PR and the merge instead of run three times per push.
 - `ci.yml` now skips entirely (`paths-ignore`) for changes that touch only Markdown files, the AI assistant instruction files (`.cursorrules`, `.clinerules`, `.windsurfrules`, `.copilot-instructions`), or the vendored `traktor-mod/D2/Api/LICENSE`. Documentation-only changes no longer trigger a build/test run at all, since none of those files affect the TypeScript build or test suite.
 
-## [0.11.0] - 2026-07-31
+## [0.11.0] (2026-07-31)
 
 ### Security
 
@@ -125,13 +125,13 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 - `docs/state-api.md` now states that `trackKey` is not an anonymizer. It is an unsalted hash of a low-entropy path, and the same snapshot carries the artist and title that make up most of that path, so a `trackKey` confirms a guessed path (username included) by offline hashing. The derivation is unchanged: `docs/state-api.md` tells consumers to reproduce it, and salting would break that contract.
 
-## [0.10.1] - 2026-07-27
+## [0.10.1] (2026-07-27)
 
 ### Fixed
 
 - `track.musicalKey` was always `null` on live decks. It was the only field on the `deckLoaded` route coerced with the strict numeric helper, which rejects strings, while Traktor's QML sends `content.musical_key` as a string. Every other number on that route (`bpm`, `tempo`, `trackLength`, `elapsedTime`) already used the lenient helper for exactly this reason. Tests posted an integer, so they passed while real decks reported no key at all. Consumers fell back to `keyText`, which comes from `content.legacy_key` and is not dependably populated, leaving them with no key for the playing track.
 
-## [0.10.0] - 2026-07-26
+## [0.10.0] (2026-07-26)
 
 ### Added
 
@@ -145,7 +145,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 History files written before this release load unchanged: fields they predate default to `''` or `null` rather than making the entry unloadable, so `--resume` still works across the upgrade. An unrecognized `deck` value in a file is rejected rather than trusted.
 
-## [0.9.0] - 2026-07-26
+## [0.9.0] (2026-07-26)
 
 ### Added
 
@@ -160,45 +160,45 @@ History files written before this release load unchanged: fields they predate de
 - A repeated `deckLoaded` is no longer treated as a refresh when only the `streamingId` differs. Two streamed tracks sharing a title would previously have reused the load id, which history deduplicates on, so the second play went unrecorded.
 - Corrected the note about the virtual Kontrol D2: it persists across ordinary Traktor restarts and only needs re-adding after `install.ps1` replaces the mapping, rather than every session.
 
-## [0.8.0] - 2026-07-25
+## [0.8.0] (2026-07-25)
 
 ### Added
 
 - `GET /state` and the `/ws` state message now include a `schemaVersion` field (currently `1`), so external consumers can distinguish "server unreachable" from "shape I don't recognize" instead of failing closed on both.
 - `docs/state-api.md` documents the `/state` and `/ws` state-message contract for external consumers (e.g. chat bots polling this server), formalizing what was previously only implicit in `CLAUDE.md`'s public API surface list.
 
-## [0.7.6] - 2026-07-23
+## [0.7.6] (2026-07-23)
 
 ### Fixed
 
 - Cover-art extraction no longer parses arbitrarily large files or stalls on a slow parse: files over 50 MiB are skipped and any parse taking longer than 5s is abandoned, both treated the same as "no cover art" instead of tying up the resolver.
 
-## [0.7.5] - 2026-07-23
+## [0.7.5] (2026-07-23)
 
 ### Changed
 
 - README now documents the `/updateMixer` ingest route and the full ingest API table, lists BPM/key/track-position in the feature summary, and mentions `npm run test:watch`.
 
-## [0.7.4] - 2026-07-22
+## [0.7.4] (2026-07-22)
 
 ### Removed
 
 - KEY LOCK badge on deck cards.
 
-## [0.7.3] - 2026-07-21
+## [0.7.3] (2026-07-21)
 
 ### Changed
 
 - Cousine utility text (stats, track position, empty-deck label) now renders at weight 700 instead of 400 for better legibility over busy video backgrounds.
 
-## [0.7.2] - 2026-07-19
+## [0.7.2] (2026-07-19)
 
 ### Fixed
 
 - Camelot key never appeared in stats or the compatible-key highlight: Traktor's `track.key.resulting.precise` CSI property is not reliably Camelot-formatted, so `resultingKey` was frequently unparseable. Camelot is now derived from Open Key notation (which is reliable) whenever Open Key is recognized, falling back to `resultingKey` only when it isn't.
 - Open Key and Camelot lookups now tolerate case and surrounding whitespace from the CSI payload instead of requiring an exact match, so a value like "1D" or " 1m " no longer silently fails to resolve a musical/Camelot key.
 
-## [0.7.1] - 2026-07-19
+## [0.7.1] (2026-07-19)
 
 ### Fixed
 
@@ -209,7 +209,7 @@ History files written before this release load unchanged: fields they predate de
 
 - Hero (now-playing) stats (BPM/key) moved below the artist name instead of sitting to the right of the title, giving the title more horizontal room before it needs to marquee-scroll.
 
-## [0.7.0] - 2026-07-19
+## [0.7.0] (2026-07-19)
 
 ### Added
 
@@ -223,9 +223,9 @@ History files written before this release load unchanged: fields they predate de
 
 ### Changed
 
-- Track history now reads "Title (Mix) - Artist" instead of "Artist - Title", matching the deck-card title format.
+- Track history now reads "Title (Mix); Artist" instead of "Artist; Title", matching the deck-card title format.
 
-## [0.6.0] - 2026-07-19
+## [0.6.0] (2026-07-19)
 
 ### Added
 
@@ -237,7 +237,7 @@ History files written before this release load unchanged: fields they predate de
 - Now-playing badges always read "ON AIR" and pulse; dropped the ON AIR (master) vs MIXING (other live decks) distinction, which didn't match a typical streaming workflow where anything shown is audible.
 - EQ display moved out of the crowded deck-card header to sit beside the title/artist text, enlarged, and labeled H/M/L per band.
 
-## [0.5.0] - 2026-07-19
+## [0.5.0] (2026-07-19)
 
 ### Added
 
@@ -255,37 +255,37 @@ History files written before this release load unchanged: fields they predate de
 - `src/state/store.ts` and `src/state/history-file.ts` now share one `src/state/coerce.ts` module for value coercion instead of two near-duplicate implementations.
 - The build script emits a source map for the overlay bundle and reports a clear error naming the missing file if a font source can't be copied, instead of a raw filesystem stack trace.
 
-## [0.4.6] - 2026-07-18
+## [0.4.6] (2026-07-18)
 
 ### Fixed
 
 - Overlay WebSocket handler no longer lets a malformed frame silently stall live updates: JSON.parse failures are caught, logged, and dropped. The catch wraps only the parse step, not rendering, so a genuine rendering bug still surfaces on its own instead of being mislabeled as a parse failure.
 
-## [0.4.5] - 2026-07-18
+## [0.4.5] (2026-07-18)
 
 ### Changed
 
 - Synced AGENTS.md with abuzucom/agents (upstream commit 1f44950, PR #5): added critical rule 10, "Verify state before assuming workflow intent". Propagated to all synced tool copies via `python scripts/sync.py`.
 
-## [0.4.4] - 2026-07-18
+## [0.4.4] (2026-07-18)
 
 ### Removed
 
 - Per-deck VU meter and the crossfader/master-VU strip; not useful in practice. EQ ticks, LOOP/KEY LOCK tags, and the key-compatibility dot are unaffected.
 
-## [0.4.3] - 2026-07-18
+## [0.4.3] (2026-07-18)
 
 ### Changed
 
 - Track history box is narrower (max-width 480px -> 400px), based on how it reads in the current stream layout.
 
-## [0.4.1] - 2026-07-18
+## [0.4.1] (2026-07-18)
 
 ### Fixed
 
 - `start-overlay.cmd` left an orphaned node.exe process running after the launcher window closed. npm's launch chain nests four processes deep (cmd -> node(npm) -> cmd -> node(server)), and Windows does not reliably propagate a window close that far. The launcher is now a PowerShell script (`start-overlay.ps1`, invoked by the unchanged `start-overlay.cmd` entry point) that starts node directly, two hops instead of four, and binds the server's lifetime to the window through three independent mechanisms: a try/finally around the wait (Ctrl+C, `exit`, normal completion), a PowerShell.Exiting engine event, and a Windows Job Object with kill-on-close for forceful kills.
 
-## [0.4.0] - 2026-07-17
+## [0.4.0] (2026-07-17)
 
 ### Added
 
@@ -296,7 +296,7 @@ History files written before this release load unchanged: fields they predate de
 
 Re-run `traktor-mod\install.ps1` to pick up the QML changes.
 
-## [0.3.0] - 2026-07-17
+## [0.3.0] (2026-07-17)
 
 ### Added
 
@@ -306,13 +306,13 @@ Re-run `traktor-mod\install.ps1` to pick up the QML changes.
 
 - .gitattributes normalizes line endings: LF in repository blobs, platform-native in working trees.
 
-## [0.2.2] - 2026-07-17
+## [0.2.2] (2026-07-17)
 
 ### Changed
 
 - Now-playing is a fixed 2x2 grid mirroring the deck layout (A B over C D). Slots keep their space when a deck is off air; content fades in place. The master deck shows ON AIR, other live decks show MIXING.
 
-## [0.2.1] - 2026-07-17
+## [0.2.1] (2026-07-17)
 
 ### Fixed
 
@@ -321,7 +321,7 @@ Re-run `traktor-mod\install.ps1` to pick up the QML changes.
 - Development (`npm run dev`, `npm run simulate`) moved to port 8090 so dev servers can never collide with or leak data into the production overlay on 8080.
 - QML mod re-sends loaded deck state every 10 s, so a server started after tracks were loaded still shows them; the server treats identical re-sends as refreshes (no history duplicates). Re-run `traktor-mod\install.ps1` to pick this up.
 
-## [0.2.0] - 2026-07-17
+## [0.2.0] (2026-07-17)
 
 ### Added
 
@@ -340,7 +340,7 @@ Re-run `traktor-mod\install.ps1` to pick up the QML changes.
 - Deck grid is a fixed 2x2 (A B over C D) at every window width.
 - Simulator sends realistic tempo multipliers, mix names, and elapsed-time ticks.
 
-## [0.1.0] - 2026-07-16
+## [0.1.0] (2026-07-16)
 
 ### Added
 
