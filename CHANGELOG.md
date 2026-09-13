@@ -4,6 +4,20 @@ All notable changes to this project are documented here. Versioning follows [Sem
 
 ## [Unreleased]
 
+### Added
+
+- Adopted upstream agent-policy enforcement for Git identity, cloud and
+  infrastructure access, trusted GitHub operations, external repository
+  references, and complete gate coverage.
+- Added policy checkers, trusted Git helpers, gate hooks, parity tests, and
+  compliance documentation from the approved upstream adoption.
+- Added tailored `CONTRIBUTING.md`, `SECURITY.md`, and `plan/HANDOFF.md`.
+
+### Changed
+
+- Updated agent-policy documentation and synchronized instruction copies.
+- Documented the repository-specific exclusion of the upstream container rule.
+
 ### Fixed
 
 - The mod validator never ran on Windows. Its entry-point guard compared
