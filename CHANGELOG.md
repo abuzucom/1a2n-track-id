@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.12.1] (2026-09-28)
+
+### Fixed
+
+- Extended the bounded traced-test limit for resource-heavy immutable scanning.
+
 ## [0.12.0] (2026-09-28)
 
 ### Added
