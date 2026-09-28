@@ -2,7 +2,7 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
-## [Unreleased]
+## [0.12.0] (2026-09-28)
 
 ### Added
 
