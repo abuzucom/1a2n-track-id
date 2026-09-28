@@ -74,7 +74,7 @@ except ImportError as error:  # pragma: no cover (exercised by the adoption test
 
 GATED_TOOLS = frozenset({"Edit", "Write", "MultiEdit", "NotebookEdit"})
 PATH_KEYS = ("file_path", "notebook_path")
-PROTECTED_PARTS = ("hooks", ".claude", ".git")
+PROTECTED_PARTS = ("hooks", ".claude", ".git", ".agents", ".codex", ".gemini")
 SKIP_WALK_DIRS = frozenset({".git", "node_modules", ".venv", "__pycache__"})
 MAX_INODE_WALK = 20000
 
@@ -84,8 +84,8 @@ Every edit to a test file that already exists routes to the user for a
 decision at the act (AGENTS.md Rule 3), in any language. Creating a new test
 file is not gated, so the test-first workflow keeps its exemption where it is
 verifiable. Destructive and history rewriting Bash commands route the same way
-(Rule 2). Writes to hooks/, .claude/, and .git/ route the same way, because they
-decide whether these gates run at all.
+(Rule 2). Writes to hooks/, .claude/, .git/, and scripts/banned_models.txt route
+the same way (Rule 22), because they decide whether these gates run at all.
 
 These repository-controlled hooks are best-effort prompts for compliant
 workflows, not an authorization boundary. Repository writers can alter them or
@@ -116,11 +116,15 @@ def is_test_path(path: str) -> bool:
 def is_protected_path(target: str, project_dir: str) -> bool:
     """Return True if `target` is a file that decides whether gates run."""
     root = os.path.realpath(project_dir)
-    if not (target == root or target.startswith(root + os.sep)):
+    target_real = os.path.realpath(target)
+    if not (target_real == root or target_real.startswith(root + os.sep)):
         return False
-    relative = os.path.relpath(target, root).replace(os.sep, "/")
-    head = relative.split("/", 1)[0].lower()
-    return head in PROTECTED_PARTS
+    relative = os.path.relpath(target_real, root).replace(os.sep, "/")
+    stripped = core.strip_windows_decorations(relative).lower()
+    head = stripped.split("/", 1)[0]
+    if head in PROTECTED_PARTS:
+        return True
+    return stripped == "scripts/banned_models.txt"
 
 
 def _same_file(first: os.stat_result, second: os.stat_result) -> bool:
@@ -255,6 +259,14 @@ def find_gate_reason(tool_name: str, target: str) -> str:
 
 def build_reason(target: str, reason: str) -> str:
     """Return the text the user reads on the permission prompt."""
+    if "Rule 22" in reason or "decides whether these gates run" in reason:
+        return (
+            f"{core.sanitize(os.path.basename(target))}: this edit {reason}. "
+            "AGENTS.md Non-negotiable Rule 22 says stop work, enter plan mode, and "
+            "obtain fresh active-human approval immediately before execution. "
+            "Approving a plan is not authorization for this edit; consent is per act. "
+            "Never work around absent consent."
+        )
     return (
         f"{core.sanitize(os.path.basename(target))}: this edit {reason}. "
         "AGENTS.md Rule 3 says stop, report it, and wait for a human decision. "

@@ -222,6 +222,27 @@ class PreToolUseTest(unittest.TestCase):
         self.assertEqual(decision, "ask")
         self.assertIn("MANDATORY BRANCH CORRECTION", result.stdout)
 
+    def test_current_directory_rename_requests_native_authorization(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project_dir = Path(directory)
+            command = f"git -C {project_dir.as_posix()} branch -m feat/recovered"
+            result = run_hook(bash_payload(command), VIOLATING_BRANCH, project_dir=project_dir)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        output = json.loads(result.stdout)
+        self.assertEqual(output["hookSpecificOutput"]["permissionDecision"], "ask")
+
+    def test_foreign_directory_rename_is_blocked(self):
+        with tempfile.TemporaryDirectory() as directory:
+            project_dir = Path(directory)
+            with tempfile.TemporaryDirectory() as foreign_directory:
+                command = (
+                    f"git -C {Path(foreign_directory).as_posix()} branch -m feat/recovered"
+                )
+                result = run_hook(
+                    bash_payload(command), VIOLATING_BRANCH, project_dir=project_dir
+                )
+        self.assertEqual(result.returncode, BLOCKING_EXIT_CODE)
+
     def test_read_only_git_command_is_blocked(self):
         for command in ("git status", "git log --oneline -5", "git branch --show-current"):
             with self.subTest(command=command):
@@ -799,6 +820,7 @@ class SettingsWiringTest(unittest.TestCase):
         "block_destructive_bash.py": {"Bash"},
         "block_destructive_cmd.py": {"Cmd|CMD|CommandPrompt"},
         "block_destructive_powershell.py": {"PowerShell"},
+        "enforce_gate_adoption.py": {"*"},
         "enforce_branch_name.py": {"*"},
         "enforce_git_identity.py": {"Bash"},
         "require_consent.py": {"Edit|Write|MultiEdit|NotebookEdit"},

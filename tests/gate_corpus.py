@@ -233,4 +233,6 @@ CONSENT_CASES = (
      "the cheapest defeat of a gate is an edit to the gate"),
     (".claude/settings.json", True, ASK,
      "the file deciding whether the gate runs at all"),
+    ("scripts/banned_models.txt", True, ASK,
+     "the banned models denylist requires active-human consent"),
 )

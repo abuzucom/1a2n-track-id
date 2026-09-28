@@ -70,6 +70,14 @@ jobs:
           --repository "${{ github.repository }}"
           --base "$PR_BASE_SHA"
           --head "$PR_HEAD_SHA"
+      - name: Check agent-attributed prose compliance
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          python scripts/check_agent_prose_gate.py \
+            --base "$PR_BASE_SHA" \
+            --head "$PR_HEAD_SHA"
       - name: Check external repository references
         run: python scripts/check_external_pr_refs.py
 
@@ -79,6 +87,7 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
           persist-credentials: false
+          fetch-depth: 0
       - name: Set up Python
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
         with:
@@ -90,6 +99,18 @@ jobs:
         run: python scripts/check_branch_name.py
       - name: Check gate adoption
         run: python scripts/check_gate_adoption.py
+      - name: Probe configured hook launchers
+        run: python scripts/check_hook_launchers.py
+      - name: Check versioned changelog
+        run: python scripts/check_changelog.py
+      - name: Check changelog version advance
+        if: github.event_name == 'pull_request'
+        env:
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: python scripts/check_changelog.py --base "$PR_BASE_SHA" --head "$PR_HEAD_SHA"
+      - name: Check canonical policy size
+        run: python scripts/check_policy_size.py
       - name: Check persist-credentials on checkout steps
         run: python scripts/check_persist_credentials.py .github/workflows/*.yml
       - name: Check for unjustified MD5/SHA-1

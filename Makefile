@@ -1,17 +1,33 @@
-PYTHON ?= python
+.PHONY: sync check lint test identity changelog
 
-.PHONY: check lint test sync
+# Overridable so a platform without this name can supply its own:
+#   make test PYTHON=py
+PYTHON ?= python3
 
-check: sync lint test
+PROSE_FILES = AGENTS.md README.md CHANGELOG.md DRIFT.md \
+	docs/gate-threat-model.md adopters/1a2n-web-visualizer.md \
+	adopters/prolink-go.md \
+	plan/HANDOFF.md.example SECURITY.md.example CONTRIBUTING.md.example \
+	.github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE.md
+
+sync:
+	$(PYTHON) scripts/sync.py
+
+check:
+	$(PYTHON) scripts/sync.py --check
+
+changelog:
+	$(PYTHON) scripts/check_changelog.py
 
 lint:
 	$(PYTHON) scripts/lint_style.py
+	$(PYTHON) scripts/check_us_spelling.py $(PROSE_FILES)
+	$(PYTHON) scripts/check_english_only.py $(PROSE_FILES)
+	$(PYTHON) scripts/check_hedging.py $(PROSE_FILES)
 	$(PYTHON) scripts/check_conflict_markers.py
-	$(PYTHON) scripts/check_action_pins.py
-	$(PYTHON) scripts/check_persist_credentials.py .github/workflows/agents-compliance.yml .github/workflows/agents-md-compliance.yml .github/workflows/ci.yml .github/workflows/immutable-conflict-check.yml .github/workflows/sync-check.yml
 
 test:
 	$(PYTHON) scripts/run_tests.py
 
-sync:
-	$(PYTHON) scripts/sync.py
+identity:
+	$(PYTHON) scripts/check_git_identity.py --advise

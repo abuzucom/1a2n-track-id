@@ -32,7 +32,8 @@ class BranchFailureTest(unittest.TestCase):
     def test_invalid_recovery_and_wrapper_paths(self):
         for command in ("git branch -m 'unfinished", "git branch -m fix/x\n", "git branch -m main"):
             with self.subTest(command=command):
-                self.assertFalse(hook._valid_recovery(command, "claude/x"))
+                self.assertFalse(
+                    hook._valid_recovery(command, "claude/x", str(REPO_ROOT)))
         for command in ("env -S 'unfinished", "env -u GIT_DIR git status"):
             with self.subTest(command=command):
                 self.assertTrue(hook.command_execution_reason(command, str(REPO_ROOT), "Bash"))

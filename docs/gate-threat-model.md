@@ -275,6 +275,12 @@ reason.
   real devices or mounts.
 - `_protected_path` uses an explicit `ntpath` cross-drive case. Linux and
   Windows therefore reach the same defensive `ValueError` branch.
+- `_pages_deployment_path_verdict` and the added path-validation statements in
+  `cloudflare_pages_verdict` retain four tracer-unreached statements. The
+  Cloudflare regression tests exercise these branches through direct verdicts,
+  persistent shell gates, and a fresh Bash subprocess. The coverage runner
+  still records no trace for these four statements. Keep the measured limit in
+  the baseline until the subprocess tracer can attribute this import path.
 - `is_test_path` retains alternate Windows path-component and drive-relative
   arms. Representative test-shaped and ordinary paths cover each verdict.
 - `su_target_verdict` retains malformed option sequences, unsupported option

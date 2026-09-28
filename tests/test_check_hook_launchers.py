@@ -50,8 +50,12 @@ class HookLauncherTest(unittest.TestCase):
         self.assertIn("missing-python", stderr.getvalue())
 
     def test_probe_checks_every_launcher_and_gate(self):
-        gates = [(Path("bash.py"), "Bash"), (Path("cmd.py"), "Cmd")]
-        completed = type("Completed", (), {"returncode": 2})()
+        gates = [
+            (Path("bash.py"), "Bash", 2, ()),
+            (Path("codex.py"), "Bash", 0, ("--client", "claude")),
+        ]
+        destructive_result = type("Completed", (), {"returncode": 2})()
+        transaction_result = type("Completed", (), {"returncode": 0})()
         with patch.object(check_hook_launchers.Path, "cwd", return_value=Path("root")):
             with patch.object(check_hook_launchers, "_config_paths", return_value=[Path("config")]):
                 with patch.object(Path, "read_text", return_value=json.dumps({
@@ -63,7 +67,12 @@ class HookLauncherTest(unittest.TestCase):
                             with patch.object(
                                 check_hook_launchers.subprocess,
                                 "run",
-                                return_value=completed,
+                                side_effect=[
+                                    destructive_result,
+                                    transaction_result,
+                                    destructive_result,
+                                    transaction_result,
+                                ],
                             ) as run:
                                 result = check_hook_launchers.main()
         self.assertEqual(result, 0)

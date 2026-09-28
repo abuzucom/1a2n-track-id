@@ -2,9 +2,28 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
-## [Unreleased]
+## [0.12.2] (2026-09-28)
+
+### Fixed
+
+- Aligned the agent prose gate with this repository's sync-check prose files.
+
+## [0.12.1] (2026-09-28)
+
+### Fixed
+
+- Extended the bounded traced-test limit for resource-heavy immutable scanning.
+
+## [0.12.0] (2026-09-28)
 
 ### Added
+
+- Added the pinned Foucault 3.3.10 pull request security reviewer. The
+  default-branch caller runs after immutable compliance, skips draft and fork
+  pull requests, maps only `OLLAMA_API_KEY`, and blocks unsafe or ambiguous
+  verdicts.
+- Added the Foucault provider adapter, response validator, review workflow,
+  review architecture documentation, and focused workflow wiring test.
 
 - Adopted upstream agent-policy enforcement for Git identity, cloud and
   infrastructure access, trusted GitHub operations, external repository

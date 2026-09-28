@@ -240,6 +240,55 @@ class GateTest(TestFileFixture):
         reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
         self.assertIn("Approving a plan is not authorization for this edit", reason)
 
+    def test_banned_models_edit_asks_and_cites_rule_22(self):
+        models_file = Path(self.tmp.name) / "scripts" / "banned_models.txt"
+        models_file.parent.mkdir(parents=True, exist_ok=True)
+        models_file.write_text("grok*\n", encoding="utf-8")
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Edit",
+            "permission_mode": "default",
+            "tool_input": {
+                "file_path": str(models_file),
+                "old_string": "grok*\n",
+                "new_string": "grok*\nxai\n",
+            },
+        }
+        _, parsed = run_hook(payload)
+        self.assertEqual(decision_of(parsed), "ask")
+        reason = parsed["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("Rule 22", reason)
+
+    def test_banned_models_edit_denies_in_unattended_mode(self):
+        models_file = Path(self.tmp.name) / "scripts" / "banned_models.txt"
+        models_file.parent.mkdir(parents=True, exist_ok=True)
+        models_file.write_text("grok*\n", encoding="utf-8")
+        payload = {
+            "hook_event_name": "PreToolUse",
+            "tool_name": "Edit",
+            "permission_mode": "headless",
+            "tool_input": {
+                "file_path": str(models_file),
+                "old_string": "grok*\n",
+                "new_string": "grok*\nxai\n",
+            },
+        }
+        code, parsed = run_hook(payload)
+        self.assertEqual(code, BLOCKING_EXIT_CODE)
+        self.assertEqual(decision_of(parsed), "deny")
+
+    def test_banned_models_windows_decorations_ask(self):
+        module = load_hook_module("require_consent_windows_decorations")
+        for decorated in (
+            "scripts/banned_models.txt:stream",
+            "scripts/banned_models.txt.",
+            "scripts/banned_models.txt ",
+        ):
+            with self.subTest(decorated=decorated):
+                target = str(Path(self.tmp.name) / decorated)
+                self.assertTrue(module.is_protected_path(target, self.tmp.name))
+        self.assertFalse(module.is_protected_path("/outside/path.txt", self.tmp.name))
+
 
 class PreservedTextEvasionTest(TestFileFixture):
     """Keeping the old text somewhere in the new text is not keeping the test.

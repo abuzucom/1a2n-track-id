@@ -69,6 +69,7 @@ class PolicyContentTest(unittest.TestCase):
     def setUpClass(cls):
         cls.hook = load_hook_module()
         cls.policy = POLICY_PATH.read_text(encoding="utf-8")
+        cls.complete_policy, _digest = cls.hook.load_policy(REPO_ROOT)
 
     def test_claude_chunks_reconstruct_exact_policy(self):
         chunks = self.hook.split_policy(self.policy, self.hook.CLAUDE_CHUNK_COUNT)
@@ -80,7 +81,7 @@ class PolicyContentTest(unittest.TestCase):
         result = run_hook("codex", payload)
         self.assertEqual(result.returncode, 0, result.stderr)
         context = json.loads(result.stdout)["hookSpecificOutput"]["additionalContext"]
-        self.assertTrue(context.endswith(self.policy))
+        self.assertTrue(context.endswith(self.complete_policy))
 
     def test_gemini_preserves_request_and_adds_policy(self):
         payload = {
@@ -96,9 +97,9 @@ class PolicyContentTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         request = json.loads(result.stdout)["hookSpecificOutput"]["llm_request"]
         self.assertEqual(request["messages"][1]["content"], "hello")
-        self.assertTrue(request["messages"][0]["content"].endswith(self.policy))
+        self.assertTrue(request["messages"][0]["content"].endswith(self.complete_policy))
 
-    def test_antigravity_returns_empty_pre_invocation_output(self):
+    def test_antigravity_receives_ephemeral_policy(self):
         payload = {
             "conversationId": "test-conversation",
             "workspacePaths": [str(REPO_ROOT)],
@@ -106,20 +107,19 @@ class PolicyContentTest(unittest.TestCase):
         }
         result = run_hook("antigravity", payload)
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertEqual(json.loads(result.stdout), {})
+        message = json.loads(result.stdout)["injectSteps"][0]["ephemeralMessage"]
+        self.assertTrue(message.endswith(self.complete_policy))
 
-    def test_antigravity_pre_tool_uses_decision_schema(self):
+    def test_antigravity_pre_tool_use_output_is_schema_safe(self):
         payload = {
-            "conversationId": "test-conversation",
+            "hook_event_name": "PreToolUse",
             "workspacePaths": [str(REPO_ROOT)],
-            "toolCall": {"name": "view_file", "args": {}},
-            "stepIdx": 0,
         }
         result = run_hook("antigravity", payload)
         self.assertEqual(result.returncode, 0, result.stderr)
         output = json.loads(result.stdout)
-        self.assertEqual(output["decision"], "allow")
-        self.assertTrue(output["reason"].endswith(self.policy))
+        self.assertEqual(output, {})
+        self.assertNotIn("injectSteps", output)
 
     def test_claude_emits_session_context_and_numbered_chunks(self):
         session = run_hook("claude", {"hook_event_name": "SessionStart"})
@@ -140,7 +140,7 @@ class PolicyContentTest(unittest.TestCase):
         result = run_hook("gemini", payload)
         self.assertEqual(result.returncode, 0, result.stderr)
         context = json.loads(result.stdout)["hookSpecificOutput"]
-        self.assertTrue(context["additionalContext"].endswith(self.policy))
+        self.assertTrue(context["additionalContext"].endswith(self.complete_policy))
 
 
 class PolicyValidationTest(unittest.TestCase):
@@ -158,6 +158,10 @@ class PolicyValidationTest(unittest.TestCase):
         (root / ".git").mkdir()
         (root / "AGENTS.md").write_bytes(policy)
         (root / "CLAUDE.md").write_bytes(policy)
+        for relative_name in self.hook.SUPPORTING_POLICY_FILES:
+            path = root / relative_name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("detail\n", encoding="utf-8")
         return root
 
     def test_root_search_rejects_files_and_missing_projects(self):
