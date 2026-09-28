@@ -153,11 +153,11 @@ jobs:
       - name: Check no untested statement entered the hooks
         run: python scripts/check_hook_coverage.py
       - name: Check American spelling (warning only)
-        run: python scripts/check_us_spelling.py AGENTS.md README.md CHANGELOG.md DRIFT.md docs/gate-threat-model.md docs/pr-security-review.md adopters/1a2n-web-visualizer.md adopters/prolink-go.md plan/HANDOFF.md.example SECURITY.md.example CONTRIBUTING.md.example .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE.md
+        run: python scripts/check_us_spelling.py AGENTS.md README.md CHANGELOG.md docs/gate-threat-model.md docs/pr-security-review.md plan/HANDOFF.md.example
       - name: Check English only (warning only)
-        run: python scripts/check_english_only.py AGENTS.md README.md CHANGELOG.md DRIFT.md docs/gate-threat-model.md docs/pr-security-review.md adopters/1a2n-web-visualizer.md adopters/prolink-go.md plan/HANDOFF.md.example SECURITY.md.example CONTRIBUTING.md.example .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE.md
+        run: python scripts/check_english_only.py AGENTS.md README.md CHANGELOG.md docs/gate-threat-model.md docs/pr-security-review.md plan/HANDOFF.md.example
       - name: Check prose policy (warning only)
-        run: python scripts/check_hedging.py AGENTS.md README.md CHANGELOG.md DRIFT.md docs/gate-threat-model.md docs/pr-security-review.md adopters/1a2n-web-visualizer.md adopters/prolink-go.md plan/HANDOFF.md.example SECURITY.md.example CONTRIBUTING.md.example .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE.md
+        run: python scripts/check_hedging.py AGENTS.md README.md CHANGELOG.md docs/gate-threat-model.md docs/pr-security-review.md plan/HANDOFF.md.example
       - name: Check pull request prose (warning only)
         if: github.event_name == 'pull_request'
         run: python scripts/check_pull_request_message.py
@@ -165,9 +165,9 @@ jobs:
         if: github.event_name == 'pull_request'
         run: python scripts/check_external_pr_refs.py
       - name: Check dashes and ASCII in template files
-        run: python scripts/check_ascii.py plan/HANDOFF.md.example SECURITY.md.example CONTRIBUTING.md.example .github/PULL_REQUEST_TEMPLATE.md .github/ISSUE_TEMPLATE.md
+        run: python scripts/check_ascii.py plan/HANDOFF.md.example
       - name: Check dashes and ASCII in this repo's own prose
-        run: python scripts/check_ascii.py README.md CHANGELOG.md DRIFT.md docs/gate-threat-model.md docs/pr-security-review.md adopters/1a2n-web-visualizer.md adopters/prolink-go.md
+        run: python scripts/check_ascii.py README.md CHANGELOG.md docs/gate-threat-model.md docs/pr-security-review.md
       - name: AgentLint (advisory)
         uses: 0xmariowu/AgentLint@6cf433c4092ee10a3162c2f4ddd68ff13b5d4aff
         with:
