@@ -75,15 +75,6 @@ under higher-priority rules.
 
 - `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`
 
-## Architecture
-
-TypeScript Fastify ingests Traktor state. `src/state/store.ts` derives state.
-`src/server/ws.ts` broadcasts OBS snapshots. Preserve documented API contracts.
-
-## Read before touching
-
-- Read the QML-mod README section and `docs/agents-conventions.md`.
-
 ## Banned agents
 
 - xAI

@@ -17,7 +17,7 @@
   "dependencies": {
     "@fontsource/cousine": "5.2.7",
     "@fontsource/libre-franklin": "5.2.8",
-    "fastify": "5.10.0",
+    "fastify": "5.12.1",
     "music-metadata": "11.14.0",
     "ws": "8.21.1"
   },
@@ -29,6 +29,6 @@
     "tsx": "4.23.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.64.0",
-    "vitest": "4.1.10"
+    "vitest": "4.1.11"
   }
 }
