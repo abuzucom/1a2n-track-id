@@ -71,6 +71,9 @@ under higher-priority rules.
 <!-- repository-only:start -->
 <!-- repository-only:end -->
 
+<!-- Per-repo orientation. Keep repository-specific guidance inside the
+repository-only block above. -->
+
 ## Commands
 
 - `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`
