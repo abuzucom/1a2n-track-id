@@ -40,6 +40,20 @@ class AdoptablePolicyTest(unittest.TestCase):
         self.assertIn("<!-- Per-repo orientation.", adoptable)
         self.assertNotIn("## Repository-only orientation", adoptable)
 
+    def test_adoptable_policy_removes_source_only_supporting_content(self):
+        source_only = (
+            f"{sync.SOURCE_ONLY_START}\n"
+            "source facts\n"
+            f"{sync.SOURCE_ONLY_END}\n"
+        )
+        policy = (
+            f"before\n{sync.REPOSITORY_ONLY_START}\n"
+            f"{sync.REPOSITORY_ONLY_END}\nafter\n{source_only}"
+        )
+        adoptable = sync.adoptable_content(policy)
+        self.assertIn("after", adoptable)
+        self.assertNotIn("source facts", adoptable)
+
 
 if __name__ == "__main__":
     unittest.main()

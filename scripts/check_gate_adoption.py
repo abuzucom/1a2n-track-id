@@ -1,12 +1,10 @@
 #!/usr/bin/env python3
 """Fail when the gate set arrived incomplete (AGENTS.md Rule 18).
 
-Partial adoption is the common failure. A repository receives `hooks/`
-without the registrations, without the shared modules the gates import, or
-without the checkers the rules cite. Every gate then behaves as designed for
-an absent dependency: an unregistered gate never runs, and a gate whose
-shared module is absent denies and exits 2. The result reads like broken
-tooling and invites removal of the gates.
+An incomplete candidate cannot activate. Missing registrations, shared modules,
+or cited checkers leave the verified gate set unchanged. Every gate then
+behaves as designed for an absent dependency: an unregistered gate never runs,
+and a gate whose shared module is absent denies and exits 2.
 
 This checker names the absent artifact instead. It verifies three properties:
 required files exist, every sibling module a gate imports exists, and every
@@ -28,19 +26,23 @@ import sys
 from pathlib import Path
 
 SHARED_MANIFEST = "shared-files.json"
+TRANSACTION_HOOK = "enforce_gate_adoption.py"
 CLIENT_HOOKS = (
     "hooks/block_infrastructure_access.py",
     "hooks/enforce_branch_name.py",
     "hooks/enforce_git_identity.py",
+    f"hooks/{TRANSACTION_HOOK}",
 )
 REQUIRED_CHECKERS = (
     "scripts/check_banned_agents.py",
     "scripts/check_branch_name.py",
     "scripts/check_commit_attribution.py",
     "scripts/check_commit_message.py",
+    "scripts/complete_gate_adoption.py",
     "scripts/check_dockerfile_root.py",
     "scripts/check_external_pr_refs.py",
     "scripts/check_git_identity.py",
+    "scripts/check_gate_pr_integrity.py",
     "scripts/check_hook_launchers.py",
     "scripts/check_persist_credentials.py",
     "scripts/check_secrets_heuristic.py",
@@ -54,6 +56,12 @@ CONFIG_PATHS = (
     ".claude/settings.json",
     "hooks/claude-code-settings.example.json",
 )
+TRANSACTION_CONFIGS = {
+    "claude": (".claude/settings.json", "PreToolUse", "*"),
+    "codex": (".codex/hooks.json", "PreToolUse", "*"),
+    "antigravity": (".agents/hooks.json", "PreToolUse", "*"),
+    "gemini": (".gemini/settings.json", "BeforeTool", ".*"),
+}
 SESSION_START_MATCHER = "startup|resume|clear|compact|fork"
 SUBAGENT_MATCHER = "Explore|Plan"
 EDIT_MATCHER = "Edit|Write|MultiEdit|NotebookEdit"
@@ -187,6 +195,54 @@ def _registered_matchers(document: dict, event: str, hook: str) -> set:
     return matchers
 
 
+def _event_groups_recursive(document: object, event: str) -> list[dict]:
+    """Return every hook group named by one event in nested client settings."""
+    groups = []
+    if isinstance(document, dict):
+        for key, value in document.items():
+            if key == event and isinstance(value, list):
+                groups.extend(item for item in value if isinstance(item, dict))
+            groups.extend(_event_groups_recursive(value, event))
+    elif isinstance(document, list):
+        for value in document:
+            groups.extend(_event_groups_recursive(value, event))
+    return groups
+
+
+def _group_commands(group: dict) -> list[str]:
+    """Return command-plus-argument text from one bounded hook group."""
+    commands = []
+    for entry in group.get("hooks", []):
+        if isinstance(entry, dict):
+            commands.append(_invocations(entry))
+    return commands
+
+
+def check_transaction_registrations(root: Path) -> list[str]:
+    """Require the transaction gate under every adopted client pre-tool event."""
+    findings = []
+    for client, (relative, event, matcher) in TRANSACTION_CONFIGS.items():
+        path = root / relative
+        try:
+            document = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as error:
+            findings.append(f"{client} configuration {relative} is unreadable: {error}")
+            continue
+        groups = _event_groups_recursive(document, event)
+        expected = f"{TRANSACTION_HOOK} --client {client}"
+        registered = any(
+            str(group.get("matcher", "")) == matcher
+            and any(expected in command for command in _group_commands(group))
+            for group in groups
+        )
+        if not registered:
+            findings.append(
+                f"{client} does not register {TRANSACTION_HOOK} under "
+                f"{event} with matcher {matcher!r}"
+            )
+    return findings
+
+
 def _check_document(name: str, document: dict) -> list[str]:
     """Report absent and narrowed registrations in one configuration."""
     findings = []
@@ -231,13 +287,14 @@ def main(argv: list) -> int:
     findings = check_required_files(root)
     findings += check_hook_imports(root)
     findings += check_registrations(root)
+    findings += check_transaction_registrations(root)
     if not findings:
         return 0
     for finding in findings:
         print(finding, file=sys.stderr)
     print(
-        "Rule 18 requires completing the adoption. Copy the absent "
-        "artifacts and restore the registrations. Removal repairs nothing.",
+        "Rule 18 forbids partial hook or gate adoption. Keep the verified set "
+        "unchanged and stage the complete candidate.",
         file=sys.stderr,
     )
     return 1

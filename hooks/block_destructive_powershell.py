@@ -263,6 +263,8 @@ def _program_verdict(tokens: list, redirects: list, depth: int) -> tuple:
             policy, core.github_routing_verdict(program, args, _CWD[0])),
         core.forge_verdict(program, args, _CWD[0]),
     )
+    policy = core.strongest(
+        policy, core.cloudflare_pages_verdict(program, args, _CWD[0]))
     named = _named_program_verdict(program, args, depth)
     if named is not None:
         return core.strongest(policy, named)

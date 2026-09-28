@@ -193,12 +193,12 @@ class CrossOwnerVerdictTest(unittest.TestCase):
         self.assertEqual(
             self.verdict(["issue", "create", "-R", EXTERNAL]), "ask")
 
-    def test_repository_fork_asks_from_positional_target(self):
-        self.assertEqual(self.verdict(["repo", "fork", EXTERNAL]), "ask")
+    def test_repository_fork_denies_from_positional_target(self):
+        self.assertEqual(self.verdict(["repo", "fork", EXTERNAL]), "deny")
 
     def test_positional_scan_skips_leading_flags(self):
         self.assertEqual(
-            self.verdict(["repo", "fork", "--clone", EXTERNAL]), "ask")
+            self.verdict(["repo", "fork", "--clone", EXTERNAL]), "deny")
 
     def test_owner_comparison_ignores_case(self):
         self.assertEqual(
@@ -232,10 +232,10 @@ class CrossOwnerVerdictTest(unittest.TestCase):
                           f"github.com/{EXTERNAL}"]),
             "ask")
 
-    def test_url_target_from_positional_argument_asks(self):
+    def test_url_target_from_positional_argument_denies(self):
         self.assertEqual(
             self.verdict(["repo", "fork", f"https://github.com/{EXTERNAL}"]),
-            "ask")
+            "deny")
 
     def test_same_owner_url_target_passes(self):
         self.assertEqual(
@@ -267,7 +267,8 @@ class CrossOwnerVerdictTest(unittest.TestCase):
                 ["repo", "clone", EXTERNAL],
         ):
             with self.subTest(args=args):
-                self.assertEqual(self.verdict(args), "")
+                expected = "deny" if args[:2] == ["repo", "clone"] else ""
+                self.assertEqual(self.verdict(args), expected)
 
     def test_existing_deny_paths_keep_priority(self):
         self.assertEqual(

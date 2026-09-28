@@ -21,6 +21,8 @@ from pathlib import Path
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gate_corpus
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "hooks"))
+import _gate_core
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 BASH_HOOK = REPO_ROOT / "hooks" / "block_destructive_bash.py"
@@ -371,6 +373,40 @@ class GitHubCliSafetyParityTest(unittest.TestCase):
 
     WRAPPER = "python scripts/trusted_gh.py run "
     CASES = (
+        (WRAPPER + "agent-task create", "deny"),
+        (WRAPPER + "pr -R OWNER/REPO merge 12", "deny"),
+        (WRAPPER + "pr -ROWNER/REPO merge 12", "deny"),
+        (WRAPPER + "pr --repo=OWNER/REPO merge 12", "deny"),
+        (WRAPPER + "pr -- merge 12", "deny"),
+        (WRAPPER + "auth --hostname github.example token", "deny"),
+        (WRAPPER + "auth -h github.example token", "deny"),
+        (WRAPPER + "auth -u octocat token", "deny"),
+        (WRAPPER + "repo --repo OWNER/REPO clone OWNER/REPO", "deny"),
+        (WRAPPER + "repo --repo OWNER/REPO edit --visibility public", "deny"),
+        (WRAPPER + "agent create", "deny"),
+        (WRAPPER + "agents list", "deny"),
+        (WRAPPER + "agent-tasks view 1", "deny"),
+        (WRAPPER + "cs list", "deny"),
+        (WRAPPER + "ext list", "deny"),
+        (WRAPPER + "extensions list", "deny"),
+        (WRAPPER + "skills list", "deny"),
+        (WRAPPER + "alias set x status", "deny"),
+        (WRAPPER + "config set prompt disabled", "deny"),
+        (WRAPPER + "codespace list", "deny"),
+        (WRAPPER + "completion bash", "deny"),
+        (WRAPPER + "copilot", "deny"),
+        (WRAPPER + "extension list", "deny"),
+        (WRAPPER + "gpg-key list", "deny"),
+        (WRAPPER + "preview", "deny"),
+        (WRAPPER + "release list", "deny"),
+        (WRAPPER + "secret list", "deny"),
+        (WRAPPER + "skill list", "deny"),
+        (WRAPPER + "ssh-key list", "deny"),
+        (WRAPPER + "variable list", "deny"),
+        (WRAPPER + "pr lock 1", "deny"),
+        (WRAPPER + "repo create OWNER/REPO", "deny"),
+        (WRAPPER + "run cancel 1", "deny"),
+        (WRAPPER + "auth login", "deny"),
         (WRAPPER + "repo delete OWNER/REPO", "deny"),
         (WRAPPER + "-R OWNER/REPO release delete TAG --cleanup-tag", "deny"),
         (WRAPPER + "run delete 123", "deny"),
@@ -386,18 +422,20 @@ class GitHubCliSafetyParityTest(unittest.TestCase):
         (WRAPPER + "auth token", "deny"),
         (WRAPPER + "auth refresh --scopes delete_repo", "deny"),
         (WRAPPER + "auth refresh --scopes repo", "deny"),
-        (WRAPPER + "pr merge 12", "ask"),
-        (WRAPPER + "pr merge 12 --delete-branch", "ask"),
-        (WRAPPER + "repo archive OWNER/REPO", "ask"),
+        (WRAPPER + "auth login", "deny"),
+        (WRAPPER + "auth logout", "deny"),
+        (WRAPPER + "auth refresh", "deny"),
+        (WRAPPER + "auth setup-git", "deny"),
+        (WRAPPER + "auth switch", "deny"),
+        (WRAPPER + "pr merge 12", "deny"),
+        (WRAPPER + "pr merge 12 --delete-branch", "deny"),
+        (WRAPPER + "repo archive OWNER/REPO", "deny"),
         (WRAPPER + "repo edit OWNER/REPO --visibility private", "ask"),
-        (WRAPPER + "auth login", "ask"),
-        (WRAPPER + "auth refresh", "ask"),
-        (WRAPPER + "auth setup-git", "ask"),
         (WRAPPER + "repo view OWNER/REPO", ""),
-        (WRAPPER + "release view TAG", ""),
+        (WRAPPER + "release view TAG", "deny"),
         (WRAPPER + "run view 123", ""),
-        (WRAPPER + "secret list --repo OWNER/REPO", ""),
-        (WRAPPER + "variable list --repo OWNER/REPO", ""),
+        (WRAPPER + "secret list --repo OWNER/REPO", "deny"),
+        (WRAPPER + "variable list --repo OWNER/REPO", "deny"),
         (WRAPPER + "api --method GET repos/OWNER/REPO", ""),
         (WRAPPER + "pr checks 12", ""),
         (WRAPPER + "auth status", ""),
@@ -410,12 +448,12 @@ class GitHubCliSafetyParityTest(unittest.TestCase):
         (WRAPPER + "pr review 16 --repo outside-owner-x9/repo", "ask"),
         (WRAPPER + "issue create -R outside-owner-x9/repo", "ask"),
         (WRAPPER + "issue comment 3 --repo outside-owner-x9/repo", "ask"),
-        (WRAPPER + "repo fork outside-owner-x9/repo", "ask"),
-        (WRAPPER + "release create v1 --repo outside-owner-x9/repo", "ask"),
+        (WRAPPER + "repo fork outside-owner-x9/repo", "deny"),
+        (WRAPPER + "release create v1 --repo outside-owner-x9/repo", "deny"),
         (WRAPPER + "pr view 16 --repo outside-owner-x9/repo", ""),
         (WRAPPER + "pr diff 16 --repo outside-owner-x9/repo", ""),
         (WRAPPER + "issue list --repo outside-owner-x9/repo", ""),
-        (WRAPPER + "repo clone outside-owner-x9/repo", ""),
+        (WRAPPER + "repo clone outside-owner-x9/repo", "deny"),
         # gh accepts HOST/OWNER/REPO and full URLs, so those forms reach the
         # same verdict as the bare owner/name form.
         (WRAPPER + "pr create --repo github.com/outside-owner-x9/repo", "ask"),
@@ -423,7 +461,7 @@ class GitHubCliSafetyParityTest(unittest.TestCase):
          "ask"),
         (WRAPPER + "issue create -R https://github.com/outside-owner-x9/repo",
          "ask"),
-        (WRAPPER + "repo fork https://github.com/outside-owner-x9/repo", "ask"),
+        (WRAPPER + "repo fork https://github.com/outside-owner-x9/repo", "deny"),
         (WRAPPER + "pr view 1 --repo https://github.com/outside-owner-x9/repo",
          ""),
         # A lookalike host is unreadable, and an unreadable explicit target is
@@ -443,16 +481,45 @@ class GitHubCliSafetyParityTest(unittest.TestCase):
     def test_git_and_http_substitutes_deny(self):
         commands = (
             "git clone https://github.com/OWNER/REPO.git",
+            "git clone https://raw.githubusercontent.com/OWNER/REPO/main/file",
+            "git clone git@github.com:OWNER/REPO.git",
+            "git clone github.com:OWNER/REPO.git",
+            "curl github.com:443/OWNER/REPO",
             "git remote -v",
             "git fetch origin refs/pull/12/head",
             "curl https://api.github.com/repos/OWNER/REPO",
+            "wget https://raw.githubusercontent.com/OWNER/REPO/main/file",
             "hub pr list",
+            "git-credential-manager erase",
+            "git-credential-manager-core configure",
+            "start https://github.com/login",
         )
         for command in commands:
             with self.subTest(command=command):
                 self.assertEqual(bash(command), "deny")
                 self.assertEqual(powershell(command), "deny")
                 self.assertEqual(cmd(command), "deny")
+
+    def test_shared_browser_and_credential_denials(self):
+        self.assertEqual(
+            _gate_core.github_routing_verdict(
+                "start-process", ["https://github.com/login"], "")[0],
+            "deny")
+        self.assertEqual(
+            _gate_core.github_routing_verdict(
+                "git-credential-manager", ["erase"], "")[0],
+            "deny")
+
+    def test_github_target_matching_rejects_lookalikes(self):
+        commands = (
+            "git clone https://not-github.com/OWNER/REPO.git",
+            "git clone https://example.com/github.com/OWNER/REPO.git",
+        )
+        for command in commands:
+            with self.subTest(command=command):
+                self.assertEqual(bash(command), "")
+                self.assertEqual(powershell(command), "")
+                self.assertEqual(cmd(command), "")
 
     def test_marked_git_fallback_asks(self):
         command = (

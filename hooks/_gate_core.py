@@ -26,11 +26,13 @@ import json
 import ntpath
 import os
 import posixpath
-import re
 import shlex
 import subprocess
 import sys
 import threading
+import urllib.parse
+from functools import lru_cache
+from pathlib import Path
 
 INTERACTIVE_MODES = frozenset({"default", "plan", "acceptEdits", "auto"})
 AMBIGUOUS_MARKERS = ("$", "`")
@@ -41,6 +43,7 @@ UNC_SHARE_ROOT_PARTS = 2
 DRIVE_ROOT_LENGTH = 2
 MAX_GIT_CONFIG_COUNT = 1000
 MAX_GIT_ALIAS_DEPTH = 10
+GITHUB_DOMAINS = frozenset({"github.com", "githubusercontent.com"})
 CONFIG_READ_TIMEOUT_SECONDS = 5
 CONFIG_READ_ENVIRONMENT = frozenset({
     "PATH", "SYSTEMROOT", "WINDIR", "HOME", "USERPROFILE", "HOMEDRIVE", "HOMEPATH",
@@ -377,7 +380,7 @@ def read_payload(empty_is_session_start: bool = False):
 
 def emit(gate: str, decision: str, reason: str) -> int:
     """Print the gate's decision and return the exit code it needs."""
-    message = f"blocked by hooks/{sanitize(gate)}: {sanitize(reason)}"
+    message = f"blocked by hooks/{gate}: {reason}"
     output = {
         "hookSpecificOutput": {
             "hookEventName": "PreToolUse",
@@ -578,7 +581,7 @@ PROHIBITED_COMMANDS = frozenset({
     "sfc", "sfdisk", "sftp", "shred", "ssh", "ssh-add", "ssh-agent", "ssh-keygen",
     "ssh-keyscan", "sshd", "swapoff", "telnet", "terraform", "terragrunt",
     "tftp", "tofu", "ufw", "unlink", "update-grub", "userdel", "usermod",
-    "winrm", "wipe",
+    "winrm", "wipe", "wrangler",
 })
 PROHIBITED_COMMAND_PREFIXES = ("mkfs.", "newfs_")
 INFRASTRUCTURE_PATH_MARKERS = (
@@ -617,9 +620,138 @@ def _account_delete_command(name: str, args: list) -> bool:
     return False
 
 
+def _safe_pages_value(value: str) -> bool:
+    """Return whether a Pages option value is a literal argument."""
+    return bool(value and not value.startswith("-") and not is_ambiguous(value))
+
+
+_PAGES_PROTECTED_NAMES = {
+    ".aws",
+    ".git",
+    ".netrc",
+    ".npmrc",
+    ".ssh",
+    "credentials",
+    "credentials.json",
+    "secrets",
+    "secrets.json",
+}
+_PAGES_OUTPUT_NAMES = {"build", "dist"}
+
+
+def _pages_path_is_within(root: str, candidate: str) -> bool:
+    """Return whether a resolved Pages path stays inside the output root."""
+    root_drive = os.path.splitdrive(root)[0].casefold()
+    candidate_drive = os.path.splitdrive(candidate)[0].casefold()
+    return (root_drive == candidate_drive
+            and os.path.commonpath((root, candidate)) == root)
+
+
+def _pages_symlink_is_safe(output_root: str, entry_path: str) -> bool:
+    """Return whether a deployment entry resolves to non-protected output."""
+    target_path = os.path.realpath(entry_path)
+    within_output = _pages_path_is_within(output_root, target_path)
+    relative_path = os.path.relpath(target_path, output_root)
+    path_parts = tuple(
+        part for part in relative_path.replace("\\", "/").split("/")
+        if part and part != "."
+    )
+    protected_names = tuple(name.casefold() for name in _PAGES_PROTECTED_NAMES)
+    return within_output and not (
+        any(part.casefold() in protected_names for part in path_parts)
+        or any(part.casefold().startswith(".env") for part in path_parts)
+    )
+
+
+def _pages_deployment_path_verdict(root: str, resolved_path: str) -> tuple:
+    """Reject repository roots, hidden paths, and protected output contents."""
+    relative_path = os.path.relpath(resolved_path, root)
+    path_parts = tuple(
+        part for part in relative_path.replace("\\", "/").split("/")
+        if part and part != "."
+    )
+    if not path_parts:
+        return "deny", "Pages deployment must target a dedicated output directory"
+    if any(part.startswith(".") for part in path_parts):
+        return "deny", "Pages deployment cannot target hidden directories"
+    if path_parts[-1].casefold() not in _PAGES_OUTPUT_NAMES:
+        return "deny", "Pages deployment must target a dedicated output directory"
+    protected_names = tuple(name.casefold() for name in _PAGES_PROTECTED_NAMES)
+    if any(part.casefold() in protected_names for part in path_parts):
+        return "deny", "Pages deployment cannot target protected content"
+    for current_path, directory_names, file_names in os.walk(
+        resolved_path, followlinks=False
+    ):
+        for name in (*directory_names, *file_names):
+            lowered_name = name.casefold()
+            if (lowered_name.startswith(".env")
+                    or lowered_name in protected_names
+                    or not _pages_symlink_is_safe(
+                        resolved_path, os.path.join(current_path, name))):
+                return "deny", "Pages deployment cannot include protected credentials"
+    return "", ""
+
+
+def cloudflare_pages_verdict(program: str, args: list, cwd: str = "") -> tuple:
+    """Allow only a local, explicitly targeted Cloudflare Pages deployment."""
+    name = normalize_windows_command_name(program)
+    if name != "wrangler":
+        return "", ""
+    lowered = [token.casefold() for token in args]
+    if len(args) < 3 or lowered[0:2] != ["pages", "deploy"]:
+        return "deny", "only Wrangler Pages deployment is allowed"
+
+    deploy_path = args[2]
+    if deploy_path.startswith("-") or is_ambiguous(deploy_path):
+        return "deny", "Pages deployment path must be a literal workspace path"
+    root = os.path.realpath(os.path.abspath(cwd or os.getcwd()))
+    resolved_path = os.path.realpath(os.path.abspath(os.path.join(root, deploy_path)))
+    within_workspace = _pages_path_is_within(root, resolved_path)
+    if not within_workspace or not os.path.isdir(resolved_path):
+        return "deny", "Pages deployment path must be an existing workspace directory"
+    path_verdict = _pages_deployment_path_verdict(root, resolved_path)
+    if path_verdict[0]:
+        return path_verdict
+
+    project_name = ""
+    seen_options = set()
+    index = 3
+    while index < len(args):
+        option = args[index]
+        lowered_option = option.casefold()
+        option_name = lowered_option.split("=", 1)[0]
+        if option_name in {"--project-name", "--branch"}:
+            if option_name in seen_options:
+                return "deny", "Wrangler Pages options cannot be repeated"
+            seen_options.add(option_name)
+        if lowered_option.startswith("--project-name="):
+            project_name = option.split("=", 1)[1]
+        elif lowered_option == "--project-name":
+            index += 1
+            if index >= len(args):
+                return "deny", "Pages deployment requires a project name"
+            project_name = args[index]
+        elif lowered_option.startswith("--branch="):
+            branch = option.split("=", 1)[1]
+            if not _safe_pages_value(branch):
+                return "deny", "Pages deployment branch must be literal"
+        elif lowered_option == "--branch":
+            index += 1
+            if index >= len(args) or not _safe_pages_value(args[index]):
+                return "deny", "Pages deployment branch must be literal"
+        else:
+            return "deny", "Wrangler Pages option is outside the deployment allowance"
+        index += 1
+    if not _safe_pages_value(project_name):
+        return "deny", "Pages deployment requires a literal project name"
+    return "", ""
+
+
 def prohibited_command_verdict(program: str, args: list) -> tuple:
     """Deny commands prohibited on every host and through every shell."""
     name = normalize_windows_command_name(program)
+    if name == "wrangler":
+        return "", ""
     if name in PROHIBITED_COMMANDS or name.startswith(PROHIBITED_COMMAND_PREFIXES):
         return "deny", f"{sanitize(name)} is prohibited for agent execution"
     _verb, separator, noun = name.partition("-")
@@ -1201,7 +1333,9 @@ POWERSHELL_WRITE_PARAMETERS = {
     "clear-content": PATH_PARAMETERS, "export-clixml": CONTENT_PARAMETERS,
     "export-csv": CONTENT_PARAMETERS, "rename-item": RENAME_PARAMETERS,
 }
-PROTECTED_PATH_PARTS = frozenset({"hooks", ".claude", "scripts"})
+PROTECTED_PATH_PARTS = frozenset(
+    {"hooks", ".claude", "scripts", ".agents", ".codex", ".gemini"}
+)
 
 
 def strip_windows_decorations(name: str) -> str:
@@ -1343,6 +1477,7 @@ EXEC_CAPABLE_SUBSECTIONS = {
     "gpg": ("program",),
     "merge": ("driver",),
 }
+SAFE_PAGER_VALUES = frozenset({"cat"})
 
 
 def _read_config_path(path: str):
@@ -1692,16 +1827,14 @@ def _read_invocation_configs(state: dict, environment: dict,
     return entries, ""
 
 
-def _environment_exec_key(environment: dict, assigned_names: set = None) -> str:
+def _environment_exec_key(environment: dict) -> str:
     """Return the first environment variable that makes a git read execute."""
-    assigned_names = assigned_names or set()
-    for pager_name in ("GIT_PAGER", "PAGER"):
-        pager = environment.get(pager_name)
-        if pager and (
-            pager.strip().lower() not in {"cat", "-"}
-            or pager_name in assigned_names
-        ):
-            return pager_name
+    pager = environment.get("GIT_PAGER")
+    if pager and pager.strip().lower() not in SAFE_PAGER_VALUES:
+        return "GIT_PAGER"
+    pager = environment.get("PAGER")
+    if pager and pager.strip().lower() not in SAFE_PAGER_VALUES:
+        return "PAGER"
     if environment.get("GIT_EXTERNAL_DIFF"):
         return "GIT_EXTERNAL_DIFF"
     return ""
@@ -1758,10 +1891,7 @@ def git_read_verdict(args: list, cwd: str, assignments: list) -> tuple:
         state, environment, assigned_names)
     if entries is None:
         return "ask", reason
-    found = (
-        _environment_exec_key(environment, assigned_names)
-        or _exec_capable_key(entries)
-    )
+    found = _environment_exec_key(environment) or _exec_capable_key(entries)
     if not found:
         return "", ""
     return "ask", (f"a git read sets {found}, which names a program git runs")
@@ -2621,12 +2751,90 @@ GH_SUBCOMMAND_VALUE_OPTIONS = frozenset({
     "--assignee", "--body", "--base", "--body-file", "--head", "--label",
     "--milestone", "--project", "--reviewer", "--title", "--template",
 })
+GH_COMMAND_VALUE_OPTIONS = (GH_GLOBAL_VALUE_OPTIONS
+                            | GH_SUBCOMMAND_VALUE_OPTIONS
+                            | frozenset({"-h", "-s", "-u", "--scopes"}))
 GH_BROAD_AUTH_SCOPES = frozenset({"admin:org", "admin:public_key",
                                   "admin:repo_hook", "delete_repo", "gist",
                                   "project", "repo", "user", "workflow",
                                   "write:discussion", "write:org",
                                   "write:packages"})
 GH_FALLBACK_CONFIG = "agents.githubfallback=confirmed"
+GH_COMMAND_DENYLIST = Path(__file__).with_name("github-command-denylist.txt")
+
+
+@lru_cache(maxsize=1)
+def _load_github_command_denylist() -> tuple[frozenset, frozenset]:
+    """Load GitHub CLI family and exact command-path bans."""
+    try:
+        lines = GH_COMMAND_DENYLIST.read_text(encoding="ascii").splitlines()
+    except OSError as error:
+        raise ValueError("GitHub CLI denylist is unavailable") from error
+    families = set()
+    paths = set()
+    for line_number, line in enumerate(lines, 1):
+        fields = line.split()
+        if not fields or fields[0].startswith("#"):
+            continue
+        if fields[0] == "family" and len(fields) == 2:
+            families.add((fields[1],))
+        elif fields[0] == "path" and len(fields) > 1:
+            paths.add(tuple(fields[1:]))
+        else:
+            raise ValueError(f"invalid GitHub CLI denylist line {line_number}")
+    return frozenset(families), frozenset(paths)
+
+
+def _github_command_denylist_verdict(command: list) -> tuple:
+    """Return a denial for a configured GitHub CLI command path."""
+    try:
+        families, paths = _load_github_command_denylist()
+    except ValueError as error:
+        return "deny", str(error)
+    command_path = _github_command_path(command)
+    if command_path and command_path[:1] in families:
+        if command_path[0] == "secret":
+            return "deny", "gh secret operations expose or change hosted secrets"
+        if command_path[0] == "variable":
+            return "deny", "gh variable operations expose or change hosted variables"
+        return "deny", f"gh {command_path[0]} is denied by policy"
+    for path in paths:
+        if command_path[:len(path)] == path:
+            if path == ("repo", "delete"):
+                return "deny", "gh repo delete removes work and is denied by policy"
+            return "deny", f"gh {' '.join(path)} is denied by policy"
+    return "", ""
+
+
+def _github_command_path(command: list) -> tuple:
+    """Return the noun and action after consuming option values."""
+    command_path = []
+    index = 0
+    while index < len(command) and len(command_path) < 2:
+        token = command[index]
+        if token == "--":
+            index += 1
+            continue
+        if token in GH_COMMAND_VALUE_OPTIONS:
+            index += 2
+            continue
+        lowered = token.casefold()
+        if any(lowered.startswith(option.casefold() + "=")
+               for option in GH_COMMAND_VALUE_OPTIONS if option.startswith("--")):
+            index += 1
+            continue
+        if any(token.casefold().startswith(option.casefold())
+               and len(token) > len(option)
+               for option in GH_COMMAND_VALUE_OPTIONS
+               if len(option) == 2):
+            index += 1
+            continue
+        if token.startswith("-"):
+            index += 1
+            continue
+        command_path.append(lowered)
+        index += 1
+    return tuple(command_path)
 
 
 def _github_command_args(args: list) -> list:
@@ -2687,15 +2895,10 @@ def _github_api_verdict(args: list) -> tuple:
 
 def _github_auth_verdict(args: list) -> tuple:
     """Protect GitHub credentials and broad authorization scopes."""
-    action = args[1].lower() if len(args) > 1 else ""
-    if action == "token":
-        return "deny", "gh auth token exposes an authentication credential"
     scopes = _option_value(args, frozenset({"--scopes", "-s"}))
     scope_set = {scope.strip().lower() for scope in scopes.split(",") if scope}
     if scope_set & GH_BROAD_AUTH_SCOPES:
         return "deny", "gh auth requests a broad write or deletion scope"
-    if action in {"login", "logout", "refresh", "setup-git", "switch"}:
-        return "ask", "gh auth changes authentication state or Git integration"
     return "", ""
 
 
@@ -2823,24 +3026,21 @@ def github_cli_verdict(args: list, *, repo_owner: str = "") -> tuple:
     command = _github_command_args(args)
     if not command:
         return "", ""
-    words = [token.lower() for token in command if not token.startswith("-")]
+    decision, reason = _github_command_denylist_verdict(command)
+    if decision:
+        return decision, reason
+    words = _github_command_path(command)
     noun = words[0] if words else ""
     action = words[1] if len(words) > 1 else ""
     if noun == "api":
         return _github_api_verdict(command[1:])
     if noun == "auth":
         return _github_auth_verdict(command)
-    if noun == "pr" and action == "merge":
-        if "--admin" in command:
-            return "deny", "an administrative pull request merge bypasses protections"
-        return "ask", "a pull request merge changes the hosted repository"
     if noun == "repo" and action == "edit":
         visibility = _option_value(command, frozenset({"--visibility"})).lower()
         if visibility == "public" or is_ambiguous(visibility):
             return "deny", "public repository visibility can expose private content"
         return "ask", "repository edits change hosted settings"
-    if noun == "repo" and action == "archive":
-        return "ask", "repository archiving disables hosted development"
     return _external_target_verdict(args, command, noun, action, repo_owner)
 
 
@@ -2879,15 +3079,35 @@ def _git_subcommand(args: list) -> tuple:
     return "", []
 
 
+def _is_github_hostname(hostname: str) -> bool:
+    """Return whether a hostname belongs to GitHub."""
+    normalized = hostname.rstrip(".").casefold()
+    return any(normalized == domain or normalized.endswith("." + domain)
+               for domain in GITHUB_DOMAINS)
+
+
+def _token_hostname(token: str) -> str:
+    """Return a GitHub-relevant hostname parsed from one command token."""
+    candidate = token.strip()
+    if "://" in candidate or candidate.startswith("//"):
+        return urllib.parse.urlsplit(candidate).hostname or ""
+    colon_index = candidate.find(":")
+    slash_index = candidate.find("/")
+    if colon_index >= 0 and (slash_index < 0 or colon_index < slash_index):
+        hostname = candidate[:colon_index].rsplit("@", 1)[-1]
+        return hostname
+    if "/" in candidate and not candidate.startswith("/"):
+        return candidate.split("/", 1)[0]
+    return ""
+
+
 def _is_github_target(tokens: list) -> bool:
     """Return whether arguments name GitHub or a pull request ref."""
+    for token in tokens:
+        if _is_github_hostname(_token_hostname(token)):
+            return True
     text = " ".join(tokens).casefold()
-    github_host = re.search(
-        r"(?<![a-z0-9.-])(?:api\.)?github\.com(?![a-z0-9.-])",
-        text,
-    )
-    return (github_host is not None
-            or "refs/pull/" in text or "pull/" in text)
+    return "refs/pull/" in text or "pull/" in text
 
 
 def _github_git_substitute(args: list) -> bool:
@@ -2911,6 +3131,12 @@ def github_routing_verdict(program: str, args: list, cwd: str) -> tuple:
     if wrapped:
         return "", ""
     name = normalize_windows_command_name(program)
+    if name in {"git-credential-manager", "git-credential-manager-core",
+                "credential-manager"}:
+        return "deny", "agents cannot modify Git Credential Manager"
+    if (name in {"start", "start-process", "explorer", "open", "xdg-open"}
+            and _is_github_target(args)):
+        return "deny", "agents cannot open GitHub authentication in a browser"
     if name == "gh":
         return "deny", "direct gh lookup is untrusted; use scripts/trusted_gh.py run"
     if name == "hub":

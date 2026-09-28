@@ -60,7 +60,8 @@ class BranchValidationBypassTest(unittest.TestCase):
 
     def test_recovery_rejects_chained_execution(self):
         self.assertFalse(hook._valid_recovery(
-            "git branch -m fix/recovered; git push origin claude/x", "claude/x"))
+            "git branch -m fix/recovered; git push origin claude/x",
+            "claude/x", os.getcwd()))
 
 
 if __name__ == "__main__":

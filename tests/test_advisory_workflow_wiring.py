@@ -7,6 +7,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SYNC_WORKFLOW = ROOT / ".github" / "workflows" / "sync-check.yml"
 REUSABLE_WORKFLOW = ROOT / ".github" / "workflows" / "agents-compliance.yml"
+INTEGRITY_WORKFLOW = ROOT / ".github" / "workflows" / "gate-integrity.yml"
 
 
 class AdvisoryWorkflowTest(unittest.TestCase):
@@ -49,6 +50,31 @@ class AdvisoryWorkflowTest(unittest.TestCase):
                 checkout_count,
                 text.count("persist-credentials: false"),
             )
+
+    def test_changelog_range_jobs_fetch_full_history(self):
+        workflow_jobs = (
+            (SYNC_WORKFLOW, "check-sync"),
+            (REUSABLE_WORKFLOW, "static-checks"),
+        )
+        for workflow, job in workflow_jobs:
+            text = workflow.read_text(encoding="utf-8")
+            section = text.split(f"  {job}:", 1)[1]
+            self.assertIn("fetch-depth: 0", section)
+            self.assertIn("python scripts/check_changelog.py --base", section)
+
+    def test_workflows_enforce_complete_gate_adoption(self):
+        for workflow in (SYNC_WORKFLOW, REUSABLE_WORKFLOW):
+            text = workflow.read_text(encoding="utf-8")
+            self.assertIn("python scripts/check_gate_adoption.py", text)
+            self.assertIn("python scripts/check_hook_launchers.py", text)
+
+    def test_integrity_workflow_uses_trusted_base_code(self):
+        text = INTEGRITY_WORKFLOW.read_text(encoding="utf-8")
+        self.assertIn("pull_request", text)
+        self.assertNotIn("pull_request_target", text)
+        self.assertIn("github.event.pull_request.base.sha", text)
+        self.assertIn("python scripts/check_gate_pr_integrity.py", text)
+        self.assertIn("persist-credentials: false", text)
 
 
 if __name__ == "__main__":

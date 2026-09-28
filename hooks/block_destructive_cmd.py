@@ -144,6 +144,8 @@ def classify_cmd_segment(command_tokens: tuple[str, ...]) -> tuple[str, str]:
             core.git_verdict(list(arguments), _CWD[0]),
         )
     policies = (
+        core.cloudflare_pages_verdict(
+            program_name, list(arguments), _CWD[0]),
         core.destruction_verdict(program_name, list(arguments)),
         core.alias_verdict(program_name, list(arguments)),
         core.mode_change_verdict(program_name, list(arguments)),

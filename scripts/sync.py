@@ -25,11 +25,15 @@ SOURCE = "AGENTS.md"
 SHARED_MANIFEST = "shared-files.json"
 REPOSITORY_ONLY_START = "<!-- repository-only:start -->"
 REPOSITORY_ONLY_END = "<!-- repository-only:end -->"
+SOURCE_ONLY_START = "<!-- source-only:start -->"
+SOURCE_ONLY_END = "<!-- source-only:end -->"
+MAX_POLICY_BYTES = 64 * 1024
 # Files that must be byte-identical wherever these gates are installed. A
 # decision reached by one gate and not the other is the failure the whole
 # design exists to prevent, so the files carrying decisions are listed here
 # and their hashes are committed in every repository holding them.
 SHARED_FILES = [
+    "hooks/github-command-denylist.txt",
     "hooks/_bash_parser.py",
     "hooks/_cmd_parser.py",
     "hooks/_gate_core.py",
@@ -37,14 +41,25 @@ SHARED_FILES = [
     "hooks/block_destructive_bash.py",
     "hooks/block_destructive_cmd.py",
     "hooks/block_destructive_powershell.py",
+    "hooks/enforce_gate_adoption.py",
     "hooks/reinject_agents_policy.py",
     "hooks/require_consent.py",
+    "scripts/check_gate_adoption.py",
+    "scripts/complete_gate_adoption.py",
+    "scripts/check_gate_pr_integrity.py",
+    "scripts/check_hook_launchers.py",
     "tests/gate_corpus.py",
     "tests/json_line_worker.py",
     "tests/json_line_worker_child.py",
     "tests/test_block_destructive_bash.py",
     "tests/test_block_destructive_cmd.py",
     "tests/test_block_destructive_powershell.py",
+    "tests/test_check_gate_adoption.py",
+    "tests/test_complete_gate_adoption.py",
+    "tests/test_check_hook_launchers.py",
+    "tests/test_check_gate_pr_integrity.py",
+    "tests/test_enforce_gate_adoption.py",
+    "tests/test_gate_adoption_transaction.py",
     "tests/test_platform_policy.py",
 ]
 COPIES = [
@@ -57,6 +72,46 @@ COPIES = [
     ".copilot-instructions",
     ".github/copilot-instructions.md",
 ]
+ADOPTER_POLICY_FILES = (
+    "docs/agent-policy/adoption.md",
+    "docs/agent-policy/enforcement.md",
+    "docs/agent-policy/clients.md",
+    "docs/agent-policy/github.md",
+    "docs/agent-policy/security.md",
+    "docs/project-orientation.md",
+)
+SOURCE_ONLY_POLICY_FILES = ("docs/agent-policy/source-orientation.md",)
+SUPPORTING_POLICY_FILES = ADOPTER_POLICY_FILES
+
+
+def policy_bytes(root: Path) -> bytes:
+    """Return canonical policy plus available supporting documents."""
+    source, _ = _inspect_source(root)
+    if source.stat().st_size > MAX_POLICY_BYTES:
+        raise ValueError("AGENTS.md exceeds the policy size limit")
+    raw = source.read_bytes()
+    parts = []
+    root_resolved = root.resolve()
+    for relative_name in ADOPTER_POLICY_FILES + SOURCE_ONLY_POLICY_FILES:
+        path = _lexical_path(root, relative_name)
+        if not path.exists():
+            if relative_name in SOURCE_ONLY_POLICY_FILES:
+                continue
+            raise ValueError(f"{relative_name} is missing")
+        details = path.lstat()
+        if not stat.S_ISREG(details.st_mode):
+            raise ValueError("supporting policy is not a regular file")
+        if details.st_size > MAX_POLICY_BYTES:
+            raise ValueError("supporting policy exceeds the policy size limit")
+        if not path.resolve().is_relative_to(root_resolved):
+            raise ValueError("supporting policy escapes the repository")
+        content = path.read_bytes()
+        content.decode("ascii")
+        parts.append(content + (b"\n" if not content.endswith(b"\n") else b""))
+    assembled = raw + (b"\n" if not raw.endswith(b"\n") else b"") + b"".join(parts)
+    if len(assembled) > MAX_POLICY_BYTES:
+        raise ValueError("AGENTS.md exceeds the policy size limit")
+    return assembled
 
 
 def adoptable_content(content: str) -> str:
@@ -69,14 +124,21 @@ def adoptable_content(content: str) -> str:
     _, suffix = remainder.split(REPOSITORY_ONLY_END, 1)
     if prefix.endswith("\n") and suffix.startswith("\n"):
         suffix = suffix[1:]
-    return prefix + suffix
+    content = prefix + suffix
+    if content.count(SOURCE_ONLY_START) != content.count(SOURCE_ONLY_END):
+        raise ValueError("source-only markers must be balanced")
+    while SOURCE_ONLY_START in content:
+        source_prefix, remainder = content.split(SOURCE_ONLY_START, 1)
+        _, source_suffix = remainder.split(SOURCE_ONLY_END, 1)
+        content = source_prefix + source_suffix
+    return content
 
 
 def print_adoptable(root: Path) -> int:
     """Print adoptable policy content without changing files."""
     try:
         source, _ = _inspect_source(root)
-        content = source.read_text(encoding="utf-8")
+        content = policy_bytes(source.parent).decode("ascii")
         print(adoptable_content(content), end="")
     except (OSError, UnicodeDecodeError, ValueError):
         print("error: adoptable policy generation failed", file=sys.stderr)
@@ -179,10 +241,9 @@ def files_match(source: Path, target: Path) -> bool:
         _regular_state(source)
         if _target_state(target) is None:
             return False
-        return (
-            source.read_text(encoding="utf-8").replace("\r\n", "\n")
-            == target.read_text(encoding="utf-8").replace("\r\n", "\n")
-        )
+        expected = policy_bytes(source.parent)
+        actual = target.read_bytes().replace(b"\r\n", b"\n")
+        return expected.replace(b"\r\n", b"\n") == actual
     except (OSError, RuntimeError, UnicodeDecodeError, ValueError):
         return False
 
@@ -195,6 +256,9 @@ def _copy_to_temp(source: Path, parent: Path) -> Path:
     try:
         os.close(descriptor)
         shutil.copyfile(source, temp_path)
+        assembled = policy_bytes(source.parent)
+        if assembled != source.read_bytes():
+            temp_path.write_bytes(assembled)
         with temp_path.open("ab") as temp_file:
             temp_file.flush()
             os.fsync(temp_file.fileno())

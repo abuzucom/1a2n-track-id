@@ -153,6 +153,16 @@
             "type": "command",
             "command": "python",
             "args": [
+              "${CLAUDE_PROJECT_DIR}/hooks/enforce_gate_adoption.py",
+              "--client",
+              "claude"
+            ],
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "python",
+            "args": [
               "${CLAUDE_PROJECT_DIR}/hooks/enforce_branch_name.py",
               "--client",
               "claude"

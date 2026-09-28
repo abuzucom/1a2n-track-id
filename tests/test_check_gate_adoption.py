@@ -49,7 +49,15 @@ class PartialAdoptionTest(unittest.TestCase):
 
     def _copy_full_tree(self) -> Path:
         """Copy the live gate set into the temporary adopter root."""
-        for relative in ("hooks", "scripts", "tests", ".claude"):
+        for relative in (
+            "hooks",
+            "scripts",
+            "tests",
+            ".claude",
+            ".codex",
+            ".agents",
+            ".gemini",
+        ):
             shutil.copytree(REPOSITORY_ROOT / relative, self.root / relative)
         for relative in check_gate_adoption.REQUIRED_POLICY:
             shutil.copy(REPOSITORY_ROOT / relative, self.root / relative)
@@ -76,7 +84,7 @@ class PartialAdoptionTest(unittest.TestCase):
         self.assertIn("shared-files.json is absent", output)
         self.assertIn("scripts/check_branch_name.py is absent", output)
         self.assertIn(f"{LIVE_SETTINGS} is absent or unreadable", output)
-        self.assertIn("Removal repairs nothing", output)
+        self.assertIn("forbids partial hook or gate adoption", output)
 
     def test_absent_shared_module_reports_importing_gate(self):
         self._copy_full_tree()

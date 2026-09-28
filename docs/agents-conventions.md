@@ -116,6 +116,20 @@ without removing the sentence that claims it.
 `.pre-commit-config.yaml` mirrors the CI checks for local, pre-push
 feedback; it is optional tooling, not required to commit.
 
+## Foucault pull request review
+
+`.github/workflows/security-review-pr.yml` runs after `Immutable Compliance`.
+The caller resolves one pull request from the trusted workflow-run head SHA.
+It reviews non-draft same-repository pull requests. Forks receive no provider
+secret and skip the model call.
+
+The caller pins Foucault 3.3.10 at
+`62851df1ef177593adbb9e06b223f5a6dce66fc0` for both the reusable workflow
+and `AUDIT.md`. The local `ci/` adapter uses the reviewed Ollama profile with
+`kimi-k2.7-code`. The workflow maps only `OLLAMA_API_KEY` to `MODEL_API_KEY`.
+The review blocks `BLOCK`, `NEEDS-HUMAN`, malformed reports, and provider
+failures. `docs/pr-security-review.md` documents the full review contract.
+
 ## Pulling future upstream changes
 
 1. Clone `abuzucom/agents` and compare its `AGENTS.md` and `CHANGELOG.md`
