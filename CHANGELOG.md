@@ -2,6 +2,12 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.12.2] (2026-09-28)
+
+### Fixed
+
+- Aligned the agent prose gate with this repository's sync-check prose files.
+
 ## [0.12.1] (2026-09-28)
 
 ### Fixed
