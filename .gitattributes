@@ -1,2 +1,7 @@
 # Normalize line endings: LF in repo, platform-native in working tree.
 * text=auto
+
+# Lifecycle policy loading enforces an assembled byte limit on every platform.
+AGENTS.md text eol=lf
+docs/agent-policy/*.md text eol=lf
+docs/project-orientation.md text eol=lf
