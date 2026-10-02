@@ -6,3 +6,4 @@ public/fonts/
 .cache/
 history/
 *.log
+__pycache__/

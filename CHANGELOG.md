@@ -18,6 +18,7 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - Added `Cross-Origin-Resource-Policy: same-origin` to every response.
 - Switched the first-run dependency install in both launchers to `npm ci`.
 - Documented the single-user trust model of the loopback ingest routes.
+- Ignored Python `__pycache__/` bytecode directories.
 
 ## [0.12.2] (2026-09-28)
 
