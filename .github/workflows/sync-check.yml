@@ -168,9 +168,3 @@ jobs:
         run: python scripts/check_ascii.py plan/HANDOFF.md.example
       - name: Check dashes and ASCII in this repo's own prose
         run: python scripts/check_ascii.py README.md CHANGELOG.md docs/gate-threat-model.md docs/pr-security-review.md
-      - name: AgentLint (advisory)
-        uses: 0xmariowu/AgentLint@6cf433c4092ee10a3162c2f4ddd68ff13b5d4aff
-        with:
-          fail-below: '0'
-          format: md
-          output-dir: agentlint-report

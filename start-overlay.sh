@@ -14,7 +14,7 @@ fi
 
 if [ ! -d "node_modules" ]; then
   echo "First run: installing dependencies..."
-  npm install
+  npm ci
 fi
 
 echo "Building the overlay server..."

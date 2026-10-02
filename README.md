@@ -72,7 +72,9 @@ The server binds to `127.0.0.1` only, and every route requires a `Host` header n
 
 WebSocket connections from non-local web origins are rejected, and client-facing state never includes local file paths. Cover art is read only from real audio files and served only as an image type. Fonts are self-hosted; the overlay makes no external requests and runs under a Content-Security-Policy that says so.
 
-`trackKey` is an identifier, not an anonymizer: it is an unsalted hash of a file path, so it can confirm a guessed path offline. See [docs/state-api.md](docs/state-api.md).
+`trackKey` is an identifier, not an anonymizer: it is an unsalted hash of a file path, so it can confirm a guessed path offline. See [docs/state-api.md](docs/state-api.md). Every response carries `Cross-Origin-Resource-Policy: same-origin`, so other web pages cannot embed cover art to probe for a track.
+
+The ingest routes have no authentication. Loopback is shared by every process and every user account on the machine. Any of them can post deck data that appears on stream, and any of them can take port 8080 before the server starts. Treat the streaming machine as single-user. Cover art is never read from UNC or device paths (`\\host\share`, `\\?\`, `//host`), because opening one sends Windows credentials to that host. A mapped network drive looks like a local path and is not covered.
 
 ## Repository policy and checks
 

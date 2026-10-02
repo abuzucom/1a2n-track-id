@@ -2,6 +2,23 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.12.3] (2026-10-02)
+
+### Fixed
+
+- Ran the pull request security review on every completed compliance run.
+  A forged `security-review` check run no longer suppresses the review.
+- Removed the unvetted third-party AgentLint action from the sync check.
+- Corrected the `actions/checkout` pin label in the Dependabot changelog
+  workflow from `v4.2.2` to `v4.4.0`.
+- Refused UNC and device paths in the cover art resolver before any
+  filesystem call. A Windows `stat()` of a UNC path sends NTLM credentials.
+- Replaced every control character in the logged track title. Crafted file
+  tags can no longer send terminal escape sequences.
+- Added `Cross-Origin-Resource-Policy: same-origin` to every response.
+- Switched the first-run dependency install in both launchers to `npm ci`.
+- Documented the single-user trust model of the loopback ingest routes.
+
 ## [0.12.2] (2026-09-28)
 
 ### Fixed

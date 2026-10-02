@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyInstance } from 'fastify';
-import { bool } from '../state/coerce.js';
+import { bool, stripControlChars } from '../state/coerce.js';
 import { isDeckId, toClientSnapshot, type TrackerStore } from '../state/store.js';
 import { isLoopbackHost } from './host-guard.js';
 import type { CoverArtResolver } from '../covers/resolver.js';
@@ -65,6 +65,9 @@ export function buildApp({ store, resolver }: AppOptions): App {
   // cannot even make us read its payload.
   app.addHook('onRequest', (req, reply, done) => {
     reply.header('x-content-type-options', 'nosniff');
+    // Without this, any web page can embed /art/<id> as an image and use its
+    // load or error event to confirm a guessed track path.
+    reply.header('cross-origin-resource-policy', 'same-origin');
     if (!isLoopbackHost(req.headers.host)) {
       void reply.code(403).send({ error: 'forbidden host' });
       return;
@@ -92,7 +95,8 @@ export function buildApp({ store, resolver }: AppOptions): App {
   app.post<{ Params: { deck: string } }>('/deckLoaded/:deck', async (req, reply) => {
     const body = asBody(req.body);
     if (!isDeckId(req.params.deck) || !body) return reply.code(400).send({ error: 'bad request' });
-    const title = typeof body.title === 'string' ? body.title.replace(/[\r\n]/g, ' ') : '';
+    // Titles come from file tags, so a crafted track can carry terminal escapes.
+    const title = typeof body.title === 'string' ? stripControlChars(body.title) : '';
     console.log(`traktor: deck ${req.params.deck} loaded: ${title || '(no title)'}`);
     store.deckLoaded(req.params.deck, body);
     return { ok: true };
