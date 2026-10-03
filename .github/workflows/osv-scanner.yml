@@ -1,0 +1,40 @@
+# Scan repository dependencies for vulnerabilities using OSV-Scanner.
+# Run scheduled scans on the default branch.
+# Run verification checks on pull requests and merge groups.
+name: OSV-Scanner
+on:
+  pull_request:
+    branches: [main]
+  merge_group:
+    branches: [main]
+  schedule:
+    # Run every Monday at 06:28 UTC.
+    - cron: '28 6 * * 1'
+  push:
+    branches: [main]
+permissions:
+  # Upload SARIF findings to the GitHub Security tab.
+  security-events: write
+  # Read repository contents for scanning.
+  contents: read
+jobs:
+  scan-scheduled:
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    # v1.7.1
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78
+    with:
+      # Recursively scan repository files while skipping Git history.
+      scan-args: |-
+        -r
+        --skip-git
+        ./
+  scan-pr:
+    if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
+    # v1.7.1
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78
+    with:
+      # Recursively scan repository files while skipping Git history.
+      scan-args: |-
+        -r
+        --skip-git
+        ./
