@@ -22,6 +22,8 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - Bumped the OSV-Scanner reusable workflows to v2.6.0. v1.7.1 called the
   retired `actions/upload-artifact` v3, which GitHub rejects at job setup.
   The caller also grants `actions: read`, which the v2.6.0 jobs request.
+  The scan arguments drop `--skip-git`, which scanner v2 removed. Git
+  roots stay unscanned by default.
 
 ## [0.12.2] (2026-09-28)
 

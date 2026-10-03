@@ -26,18 +26,18 @@ jobs:
     # v2.6.0
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc
     with:
-      # Recursively scan repository files while skipping Git history.
+      # Recursively scan repository files. Scanner v2 leaves Git roots
+      # unscanned by default and rejects the removed --skip-git flag.
       scan-args: |-
         -r
-        --skip-git
         ./
   scan-pr:
     if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
     # v2.6.0
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc
     with:
-      # Recursively scan repository files while skipping Git history.
+      # Recursively scan repository files. Scanner v2 leaves Git roots
+      # unscanned by default and rejects the removed --skip-git flag.
       scan-args: |-
         -r
-        --skip-git
         ./
