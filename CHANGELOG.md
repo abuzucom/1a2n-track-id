@@ -19,6 +19,9 @@ All notable changes to this project are documented here. Versioning follows [Sem
 - Switched the first-run dependency install in both launchers to `npm ci`.
 - Documented the single-user trust model of the loopback ingest routes.
 - Ignored Python `__pycache__/` bytecode directories.
+- Bumped the OSV-Scanner reusable workflows to v2.6.0. v1.7.1 called the
+  retired `actions/upload-artifact` v3, which GitHub rejects at job setup.
+  The caller also grants `actions: read`, which the v2.6.0 jobs request.
 
 ## [0.12.2] (2026-09-28)
 

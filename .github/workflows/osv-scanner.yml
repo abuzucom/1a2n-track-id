@@ -17,11 +17,14 @@ permissions:
   security-events: write
   # Read repository contents for scanning.
   contents: read
+  # The v2.6.0 reusable scan jobs request this scope. A called workflow
+  # cannot exceed the caller's grant, so omitting it fails the run.
+  actions: read
 jobs:
   scan-scheduled:
     if: github.event_name == 'push' || github.event_name == 'schedule'
-    # v1.7.1
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78
+    # v2.6.0
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc
     with:
       # Recursively scan repository files while skipping Git history.
       scan-args: |-
@@ -30,8 +33,8 @@ jobs:
         ./
   scan-pr:
     if: github.event_name == 'pull_request' || github.event_name == 'merge_group'
-    # v1.7.1
-    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@1f1242919d8a60496dd1874b24b62b2370ed4c78
+    # v2.6.0
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable-pr.yml@a345acffa64b0eaede81a3d9aae6141214d9c8fc
     with:
       # Recursively scan repository files while skipping Git history.
       scan-args: |-
