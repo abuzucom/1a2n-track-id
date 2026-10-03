@@ -2,6 +2,13 @@
 
 export const str = (value: unknown): string => (typeof value === 'string' ? value : '');
 
+// C0, DEL, and C1 controls. ESC and the C1 CSI/OSC introducers start terminal
+// escape sequences, and CR/LF forge log lines.
+const CONTROL_CHARACTERS = /[\u0000-\u001f\u007f-\u009f]/g;
+
+/** Replace control characters with spaces so untrusted text is inert on a terminal. */
+export const stripControlChars = (value: string): string => value.replace(CONTROL_CHARACTERS, ' ');
+
 /** Lenient: also accepts numeric strings, since live Traktor JSON may send them. */
 export const num = (value: unknown): number | null => {
   const numberValue = typeof value === 'string' ? Number(value) : value;

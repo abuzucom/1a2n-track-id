@@ -19,7 +19,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       same_repository: ${{ steps.resolve.outputs.same_repository }}
-      already_reviewed: ${{ steps.resolve.outputs.already_reviewed }}
       is_draft: ${{ steps.resolve.outputs.is_draft }}
       pr_number: ${{ steps.resolve.outputs.pr_number }}
       base_sha: ${{ steps.resolve.outputs.base_sha }}
@@ -68,26 +67,9 @@ jobs:
               return;
             }
 
-            // One model call per head revision. A completed check run carrying
-            // a verdict means this head was already reviewed. A failed run
-            // carries no verdict, so a flaky review still retries.
-            const checkRuns = await github.paginate(
-              github.rest.checks.listForRef,
-              {
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                ref: headSha,
-                check_name: "security-review",
-                per_page: 100,
-              },
-            );
-            const alreadyReviewed = checkRuns.some((run) =>
-              run.status === "completed" &&
-              /VERDICT: (APPROVE|BLOCK|NEEDS-HUMAN)\b/.test(
-                run.output?.summary || ""
-              )
-            );
-            core.setOutput("already_reviewed", alreadyReviewed ? "true" : "false");
+            // Every completion reviews again. A prior check run cannot stand in
+            // for a review: any workflow with checks: write can create one
+            // under the same name.
             core.setOutput("is_draft", pullRequest.draft === true ? "true" : "false");
             core.setOutput(
               "same_repository",
@@ -103,7 +85,7 @@ jobs:
 
   review:
     needs: resolve-pr
-    if: needs.resolve-pr.result == 'success' && needs.resolve-pr.outputs.same_repository == 'true' && needs.resolve-pr.outputs.already_reviewed != 'true' && needs.resolve-pr.outputs.is_draft != 'true'
+    if: needs.resolve-pr.result == 'success' && needs.resolve-pr.outputs.same_repository == 'true' && needs.resolve-pr.outputs.is_draft != 'true'
     uses: abuzucom/foucault/.github/workflows/security-review.yml@62851df1ef177593adbb9e06b223f5a6dce66fc0
     with:
       # Foucault 3.3.10 policy revision.

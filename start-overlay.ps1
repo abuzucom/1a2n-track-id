@@ -24,9 +24,9 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 
 if (-not (Test-Path (Join-Path $PSScriptRoot 'node_modules'))) {
     Write-Host 'First run: installing dependencies...'
-    npm install
+    npm ci
     if ($LASTEXITCODE -ne 0) {
-        Write-Host 'npm install failed.'
+        Write-Host 'npm ci failed.'
         Read-Host 'Press Enter to exit'
         exit 1
     }

@@ -42,6 +42,13 @@ const AUDIO_EXTENSIONS = new Set([
  */
 const ALLOWED_ART_MIME_TYPES = new Set(['image/jpeg', 'image/png', 'image/gif', 'image/webp']);
 
+/**
+ * UNC (\\host\share), device (\\?\, \\.\), and //host paths. On Windows,
+ * stat() of a UNC path authenticates to that host and hands it the user's
+ * NTLM hash, so these are refused before any filesystem call.
+ */
+const REMOTE_OR_DEVICE_PATH = /^[\\/]{2}/;
+
 /** Lowercased type without parameters, e.g. "IMAGE/PNG; charset=x" -> "image/png". */
 function normalizeMime(mime: string): string {
   return (mime.split(';')[0] ?? '').trim().toLowerCase();
@@ -88,6 +95,7 @@ export class CoverArtResolver {
 
   /** Parse the file if it is one we are willing to open; null on any refusal. */
   private async readCover(filePath: string): Promise<CoverArt | null> {
+    if (REMOTE_OR_DEVICE_PATH.test(filePath)) return null;
     if (!AUDIO_EXTENSIONS.has(extname(filePath).toLowerCase())) return null;
     try {
       const stats = await stat(filePath);
