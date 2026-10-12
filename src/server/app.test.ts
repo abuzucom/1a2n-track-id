@@ -108,6 +108,16 @@ describe('ingest routes', () => {
     expect(js.headers['content-type']).toContain('javascript');
   });
 
+  it('redirects root and plain http ws requests to overlay', async () => {
+    const root = await app.inject({ method: 'GET', url: '/' });
+    expect(root.statusCode).toBe(302);
+    expect(root.headers.location).toBe('/overlay');
+
+    const ws = await app.inject({ method: 'GET', url: '/ws' });
+    expect(ws.statusCode).toBe(302);
+    expect(ws.headers.location).toBe('/overlay');
+  });
+
   it('serves cover art by id and 404s unknown/malformed ids', async () => {
     const { mkdtemp, writeFile, rm } = await import('node:fs/promises');
     const { tmpdir } = await import('node:os');

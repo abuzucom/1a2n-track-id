@@ -145,6 +145,10 @@ export function buildApp({ store, resolver }: AppOptions): App {
     return reply.type(art.mime).send(art.data);
   });
 
+  // Plain HTTP requests to root or websocket endpoint redirect to the overlay.
+  app.get('/', async (_req, reply) => reply.redirect('/overlay'));
+  app.get('/ws', async (_req, reply) => reply.redirect('/overlay'));
+
   for (const [route, { file, type, csp }] of Object.entries(STATIC_FILES)) {
     app.get(route, async (_req, reply) => {
       try {
