@@ -18,7 +18,7 @@
     "@fontsource/cousine": "5.2.7",
     "@fontsource/libre-franklin": "5.2.8",
     "fastify": "5.12.5",
-    "music-metadata": "11.14.0",
+    "music-metadata": "11.16.0",
     "ws": "8.21.1"
   },
   "devDependencies": {
