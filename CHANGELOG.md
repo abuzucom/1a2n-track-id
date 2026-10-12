@@ -2,6 +2,13 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.12.4] (2026-10-12)
+
+### Fixed
+
+- Redirected root (`/`) and plain HTTP WebSocket (`/ws`) requests to the
+  overlay endpoint (`/overlay`).
+
 ## [0.12.3] (2026-10-02)
 
 ### Fixed
