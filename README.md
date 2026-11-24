@@ -131,3 +131,9 @@ npm run build      # production build (tsc + esbuild)
 Development runs on port 8090 (`http://127.0.0.1:8090/overlay`); the production launcher owns 8080. This keeps stale dev servers and simulated data away from the live overlay.
 
 Config via env vars: `TRACK_ID_PORT` (default 8080), `TRACK_ID_EXIT_GRACE_MS` (default 60000).
+
+## License
+
+The BSD 3-Clause License covers this project. Copyright (c) 2026, ABUZUCOM LLC. See [LICENSE](LICENSE).
+
+The Traktor QML mod in `traktor-mod/D2/` adapts `ErikMinekus/traktor-api-client`. The MIT License covers the adapted upstream portions. Copyright (c) 2024 Erik Minekus. See [NOTICE](NOTICE) and [traktor-mod/D2/LICENSE](traktor-mod/D2/LICENSE).
