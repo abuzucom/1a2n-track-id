@@ -30,6 +30,7 @@ export interface Deck {
   isPlaying: boolean;
   isLooping: boolean;
   isKeyLockOn: boolean;
+  isSynced: boolean;
   onAir: boolean;
   elapsedTime: number;
 }
@@ -82,6 +83,14 @@ export function keyLabel(track: Track): string {
   const camelot = resolvedCamelotKey(track);
   if (camelot) parts.push(camelot);
   return parts.join(' / ');
+}
+
+/**
+ * Whether the deck card shows the SYNC OFF badge. Sync normally stays
+ * engaged during a set, so only the disengaged state needs a warning.
+ */
+export function isSyncOffShown(deck: Deck): boolean {
+  return !deck.isSynced;
 }
 
 /** BPM and key summary line for a track, e.g. "128.0 BPM | 7d / 8A". */

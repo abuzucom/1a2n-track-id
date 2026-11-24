@@ -30,6 +30,7 @@ function deck(over: Partial<Deck> = {}): Deck {
     isPlaying: false,
     isLooping: false,
     isKeyLockOn: false,
+    isSynced: true,
     onAir: false,
     elapsedTime: 0,
     ...over,
