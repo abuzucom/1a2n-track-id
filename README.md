@@ -100,7 +100,7 @@ History starts empty on every launch and is written to `history/session-<date>.j
 
 ## Mixer telemetry
 
-Deck cards show live EQ positions, a LOOP tag, and a dot when a deck's key is Camelot-compatible with the on-air track. Data arrives at 10 Hz from the QML mod via `/updateMixer`; idle mixers send nothing. Re-run `traktor-mod\install.ps1` after updating to enable it.
+Deck cards show live EQ positions, a LOOP tag, a pulsing SYNC OFF badge when sync is disengaged, and a dot when a deck's key is Camelot-compatible with the on-air track. Data arrives at 10 Hz from the QML mod via `/updateMixer`; idle mixers send nothing. Re-run `traktor-mod\install.ps1` after updating to enable it.
 
 ## Ingest API
 

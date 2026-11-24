@@ -171,6 +171,11 @@
     color: var(--concrete); border: 1px solid var(--concrete);
     border-radius: var(--radius); padding: 1px 5px;
   }
+  /* SYNC OFF reuses the ON AIR badge colors and 0.5 Hz pulse. */
+  .deck .tag.syncoff {
+    color: var(--pitch); background: var(--paper); border-color: var(--paper);
+    animation: pulse 2s ease-in-out infinite;
+  }
   .deck .compat {
     width: 7px; height: 7px; border-radius: 50%;
     background: var(--paper); flex: none;

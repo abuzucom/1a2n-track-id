@@ -2,6 +2,20 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.13.0] (2026-11-24)
+
+### Added
+
+- Added a pulsing SYNC OFF badge to deck cards. The badge appears only
+  when a deck reports sync disengaged. It takes the header position of
+  the KEY LOCK badge that 0.7.4 removed.
+
+### Fixed
+
+- Aligned the `package.json` and `package-lock.json` versions with the
+  changelog. Both files still read 0.12.0 after the 0.12.1 to 0.12.4
+  releases.
+
 ## [0.12.4] (2026-10-12)
 
 ### Fixed
