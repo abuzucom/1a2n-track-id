@@ -2,6 +2,26 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.13.1] (2026-11-24)
+
+### Security
+
+- Bumped `fastify` from 5.12.5 to 5.12.8. The release fixes header
+  validation bypass GHSA-389g-gv7q-r4x8 and advisory GHSA-3qgw-9275-xf8w.
+- Updated the transitive `fast-uri` package to 3.1.9 and 4.2.4. The
+  update fixes three URI normalization advisories.
+- Bumped `eslint` from 10.7.0 to 10.15.0 and `typescript-eslint` from
+  8.64.0 to 8.74.0. Both pull in `minimatch` 11.0.9 for the globparts
+  denial of service advisory GHSA-g3hv-75wg-m249.
+- Bumped `vitest` from 4.1.11 to 4.1.12 for the hardened mocker fix.
+- Refreshed transitive packages within the declared ranges. The set
+  includes `vite` 8.3.8, `rolldown` 1.2.19, and `postcss` 8.5.33.
+
+### Changed
+
+- Approved the pinned `esbuild@0.28.1` install script in `allowScripts`.
+  npm 11 skips unapproved install scripts.
+
 ## [0.13.0] (2026-11-24)
 
 ### Added
