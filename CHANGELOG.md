@@ -2,6 +2,19 @@
 
 All notable changes to this project are documented here. Versioning follows [SemVer](https://semver.org/); versions below 1.0.0 are unstable initial development.
 
+## [0.13.2] (2026-11-24)
+
+### Added
+
+- Licensed the project under the BSD 3-Clause License. Copyright
+  (c) 2026, ABUZUCOM LLC.
+- Added a `NOTICE` file for the Traktor QML mod. The mod adapts
+  `ErikMinekus/traktor-api-client` under the MIT License.
+- Added `traktor-mod/D2/LICENSE` with the upstream MIT text. The notice
+  now sits beside `D2.qml` and covers the whole installed folder.
+- Set the `license` field in `package.json` to `BSD-3-Clause`.
+- Added a License section to the README.
+
 ## [0.13.1] (2026-11-24)
 
 ### Security

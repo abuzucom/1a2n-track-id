@@ -1,0 +1,18 @@
+1a2n-track-id
+Copyright (c) 2026, ABUZUCOM LLC
+
+The BSD 3-Clause License in LICENSE covers this project.
+
+Third-party notice
+
+The Traktor QML mod in traktor-mod/D2/ adapts traktor-api-client.
+The adapted files include D2.qml and the Api/ folder.
+
+  Project: ErikMinekus/traktor-api-client
+  Source:  https://github.com/ErikMinekus/traktor-api-client
+  License: MIT License
+  Copyright (c) 2024 Erik Minekus
+
+The MIT License text ships in traktor-mod/D2/LICENSE and
+traktor-mod/D2/Api/LICENSE. The MIT terms continue to govern the adapted
+upstream portions.
